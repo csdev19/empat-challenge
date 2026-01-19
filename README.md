@@ -1,4 +1,4 @@
-# Hiring Tool
+# Empat Challenge
 
 A modern web application for tracking job interviews and managing hiring processes. Built to help job seekers organize their applications, track company information, and manage interactions with potential employers.
 
@@ -24,7 +24,7 @@ A modern web application for tracking job interviews and managing hiring process
 
 ```bash
 git clone <repository-url>
-cd hiring-tool
+cd empat-challenge
 ```
 
 2. Install dependencies:
@@ -34,9 +34,12 @@ bun install
 ```
 
 3. Set up environment variables:
-   - Copy `.env.example` to `.env` in `apps/server/` (if available)
-   - Configure your PostgreSQL connection string
-   - Set up authentication secrets
+   - Copy `.dev.vars-example` to `.dev.vars` in `apps/server/` (if available)
+   - Configure your PostgreSQL connection string in `DATABASE_URL`
+   - Set up authentication secrets (`BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`)
+   - Set `CORS_ORIGIN` to your frontend URL (defaults to `*` for development)
+
+   **Note**: Environment variables are validated with Zod on server startup. Missing required variables will cause the server to fail with a clear error message.
 
 4. Set up the database:
 
@@ -58,7 +61,7 @@ The application will be available at:
 ## 📁 Project Structure
 
 ```
-hiring-tool/
+empat-challenge/
 ├── apps/
 │   ├── web/              # Frontend application (React + TanStack Start)
 │   ├── server/            # Backend API (Elysia)
@@ -67,7 +70,8 @@ hiring-tool/
 │   ├── auth/             # Authentication configuration
 │   ├── db/                # Database schema & Drizzle ORM
 │   ├── domain/            # Domain types, constants, and utilities
-│   └── config/            # Shared TypeScript configuration
+│   ├── config/            # Shared TypeScript configuration
+│   └── web-ui/            # Shared UI components (shadcn/ui)
 ```
 
 ## 🛠️ Available Scripts
@@ -99,7 +103,25 @@ hiring-tool/
 
 ## 🚢 Deployment
 
-### Alchemy (Cloudflare Workers)
+### Railway (Backend API)
+
+The backend server is configured for deployment on Railway. See [apps/server/RAILWAY.md](apps/server/RAILWAY.md) for detailed deployment instructions.
+
+**Quick Start:**
+
+1. Connect your GitHub repository to Railway
+2. Configure environment variables in Railway dashboard
+3. Railway will automatically detect the Dockerfile and deploy
+
+**Required Environment Variables:**
+
+- `CORS_ORIGIN` - Your frontend URL
+- `DATABASE_URL` - PostgreSQL connection string
+- `BETTER_AUTH_SECRET` - Secret key for authentication
+- `BETTER_AUTH_URL` - Your API URL (optional)
+- `PORT` - Automatically set by Railway
+
+### Alchemy (Cloudflare Workers - Frontend)
 
 ```bash
 # Development
@@ -143,6 +165,7 @@ This project was built using the [Better-T-Stack](https://github.com/AmanVarshne
 - **Drizzle ORM** - TypeScript-first SQL ORM
 - **PostgreSQL** - Relational database
 - **Better-Auth** - Authentication library
+- **Zod** - Schema validation for environment variables and API requests
 
 ### Development Tools
 
@@ -156,8 +179,9 @@ This project was built using the [Better-T-Stack](https://github.com/AmanVarshne
 ### Architecture
 
 - **Monorepo** - Turborepo for managing multiple packages
-- **Domain-Driven Design** - Separated domain, infrastructure, and application layers
+- **Schema-Based Architecture** - Validation-first approach with Zod schemas
 - **Type Safety** - End-to-end type safety from database to frontend
+- **Workspace Packages** - Shared code organized in `@empat-challenge/*` packages
 
 ## 🙏 Credits
 
