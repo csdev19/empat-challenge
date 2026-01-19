@@ -1,0 +1,36 @@
+// Hiring Process schemas
+export {
+  hiringProcessBaseSchema,
+  createHiringProcessSchema,
+  updateHiringProcessSchema,
+  partialUpdateHiringProcessSchema,
+  filterHiringProcessSchema,
+  type HiringProcessBase,
+  type CreateHiringProcess,
+  type UpdateHiringProcess,
+  type PartialUpdateHiringProcess,
+  type FilterHiringProcess,
+} from "./hiring-process";
+
+// Company Details schemas
+export {
+  companyDetailsBaseSchema,
+  createCompanyDetailsSchema,
+  updateCompanyDetailsSchema,
+  type CompanyDetailsBase,
+  type CreateCompanyDetails,
+  type UpdateCompanyDetails,
+} from "./company-details";
+
+// Interaction schemas
+export {
+  interactionBaseSchema,
+  createInteractionSchema,
+  updateInteractionSchema,
+  type InteractionBase,
+  type CreateInteraction,
+  type UpdateInteraction,
+} from "./interaction";
+
+// Pagination schemas
+export { paginationQuerySchema, type PaginationQuery } from "./pagination";

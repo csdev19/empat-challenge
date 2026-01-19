@@ -1,0 +1,502 @@
+---
+title: Schemas Implementation Guide
+description: How to use Zod schemas from the domain package across the application
+date: 2025-12-25
+tags:
+  - schemas
+  - validation
+  - implementation
+  - zod
+---
+
+# Schemas Implementation Guide
+
+This guide explains how to use the Zod schemas from the `@interviews-tool/domain` package across the hiring-tool application.
+
+## Package Structure
+
+```
+packages/domain/src/
+├── constants/
+│   ├── currency.ts
+│   ├── interview-status.ts
+│   └── interaction-type.ts
+├── types/
+│   ├── api-response.ts
+│   └── result.ts
+└── schemas/              👈 NEW
+    ├── hiring-process.ts
+    ├── company-details.ts
+    ├── interaction.ts
+    └── index.ts
+```
+
+## Zod v4 Syntax
+
+**IMPORTANT**: This project uses Zod v4. Always use the modern syntax:
+
+```typescript
+// ✅ Zod v4 (CORRECT)
+z.uuid()          // Not z.string().uuid()
+z.url()           // Not z.string().url()
+z.email()         // Not z.string().email()
+z.date()          // For date objects
+z.coerce.date()   // To coerce strings to dates
+
+// ❌ Zod v3 syntax (WRONG - DO NOT USE)
+z.string().uuid()
+z.string().url()
+z.string().email()
+```
+
+## Schema Organization
+
+Each entity has its own schema file with:
+
+- **Base schema**: Complete domain model
+- **Create schema**: Fields for creation (derived from base)
+- **Update schema**: Fields for updates (derived from base/create)
+- **Additional schemas**: Filters, partials, etc. as needed
+
+### Example: Hiring Process Schemas
+
+```typescript
+// packages/domain/src/schemas/hiring-process.ts
+import { z } from "zod";
+import { INTERVIEW_STATUSES, CURRENCIES } from "../constants";
+
+// Base schema - source of truth (using Zod v4 syntax)
+export const hiringProcessBaseSchema = z.object({
+  id: z.uuid(),                     // ✅ Zod v4: z.uuid() not z.string().uuid()
+  companyName: z.string().min(1, "Company name is required"),
+  status: z.enum([
+    INTERVIEW_STATUSES.ONGOING,
+    INTERVIEW_STATUSES.REJECTED,
+    INTERVIEW_STATUSES.DROPPED_OUT,
+    INTERVIEW_STATUSES.HIRED,
+  ]),
+  salary: z.number().min(0).nullable(),
+  currency: z.enum([CURRENCIES.USD, CURRENCIES.PEN]),
+  userId: z.string(),
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
+});
+
+// Create schema - derived from base
+export const createHiringProcessSchema = hiringProcessBaseSchema
+  .pick({
+    companyName: true,
+    status: true,
+  })
+  .extend({
+    salary: z.number().min(0).optional(),
+    currency: z.enum([CURRENCIES.USD, CURRENCIES.PEN]).optional(),
+  });
+
+// Update schema
+export const updateHiringProcessSchema = createHiringProcessSchema;
+
+// Type exports
+export type HiringProcessBase = z.infer<typeof hiringProcessBaseSchema>;
+export type CreateHiringProcess = z.infer<typeof createHiringProcessSchema>;
+export type UpdateHiringProcess = z.infer<typeof updateHiringProcessSchema>;
+```
+
+## Backend Usage
+
+### Elysia Route Validation
+
+```typescript
+// apps/server/src/routes/hiring-processes.ts
+import { Elysia, t } from "elysia";
+import { updateHiringProcessSchema } from "@interviews-tool/domain/schemas";
+
+export const hiringProcessRoutes = new Elysia({ prefix: "/api/hiring-processes" })
+  .put(
+    "/:id",
+    async ({ params, body }) => {
+      // body is automatically validated and typed
+      const updated = await db
+        .update(hiringProcess)
+        .set({
+          companyName: body.companyName,
+          status: body.status,
+          salary: body.salary,
+          currency: body.currency,
+        })
+        .where(eq(hiringProcess.id, params.id))
+        .returning();
+
+      return successBody(updated);
+    },
+    {
+      params: t.Object({
+        id: t.String(),
+      }),
+      body: updateHiringProcessSchema, // 👈 Zod schema from domain
+    },
+  );
+```
+
+### Benefits:
+
+- ✅ Automatic validation
+- ✅ Type inference
+- ✅ Consistent validation rules
+- ✅ Single source of truth
+
+## Frontend Usage
+
+### Form Validation with React Hook Form
+
+```typescript
+// apps/web/src/components/hiring-process/hiring-process-form.tsx
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  updateHiringProcessSchema,
+  type UpdateHiringProcess
+} from "@interviews-tool/domain/schemas";
+
+export function HiringProcessForm() {
+  const form = useForm<UpdateHiringProcess>({
+    resolver: zodResolver(updateHiringProcessSchema),
+    defaultValues: {
+      companyName: "",
+      status: "ongoing",
+    },
+  });
+
+  const onSubmit = (data: UpdateHiringProcess) => {
+    // data is fully typed and validated
+    updateMutation.mutate(data);
+  };
+
+  return (
+    <form onSubmit={form.handleSubmit(onSubmit)}>
+      {/* form fields */}
+    </form>
+  );
+}
+```
+
+### Type-Safe Hooks
+
+```typescript
+// apps/web/src/hooks/use-hiring-processes.ts
+import { useMutation } from "@tanstack/react-query";
+import type { UpdateHiringProcess } from "@interviews-tool/domain/schemas";
+
+export function useUpdateHiringProcess(id: string) {
+  return useMutation({
+    mutationFn: async (data: UpdateHiringProcess) => {
+      const response = await api.hiringProcesses[id].put(data);
+      if (response.error) throw new Error(response.error.message);
+      return response.data;
+    },
+  });
+}
+```
+
+## Schema Derivation Patterns
+
+### Using `.pick()` and `.omit()`
+
+```typescript
+// Pick specific fields
+export const createSchema = baseSchema.pick({
+  companyName: true,
+  status: true,
+});
+
+// Omit specific fields
+export const updateSchema = baseSchema.omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+```
+
+### Using `.extend()`
+
+```typescript
+// Add or override fields
+export const createSchema = baseSchema
+  .pick({ companyName: true })
+  .extend({
+    // Make salary optional
+    salary: z.number().min(0).optional(),
+  });
+```
+
+### Using `.partial()`
+
+```typescript
+// Make all fields optional
+export const partialUpdateSchema = updateSchema.partial();
+```
+
+### Using `.required()`
+
+```typescript
+// Make all fields required
+export const strictSchema = baseSchema.required();
+```
+
+## Available Schemas
+
+### Hiring Process
+
+```typescript
+import {
+  hiringProcessBaseSchema,
+  createHiringProcessSchema,
+  updateHiringProcessSchema,
+  partialUpdateHiringProcessSchema,
+  filterHiringProcessSchema,
+  type HiringProcessBase,
+  type CreateHiringProcess,
+  type UpdateHiringProcess,
+} from "@interviews-tool/domain/schemas";
+```
+
+### Company Details
+
+```typescript
+import {
+  companyDetailsBaseSchema,
+  createCompanyDetailsSchema,
+  updateCompanyDetailsSchema,
+  type CompanyDetailsBase,
+  type CreateCompanyDetails,
+  type UpdateCompanyDetails,
+} from "@interviews-tool/domain/schemas";
+```
+
+### Interaction
+
+```typescript
+import {
+  interactionBaseSchema,
+  createInteractionSchema,
+  updateInteractionSchema,
+  type InteractionBase,
+  type CreateInteraction,
+  type UpdateInteraction,
+} from "@interviews-tool/domain/schemas";
+```
+
+## Best Practices
+
+### 1. Always Use Schemas for Validation
+
+```typescript
+// ✅ Good - use schema
+const result = createHiringProcessSchema.safeParse(data);
+if (!result.success) {
+  throw new Error(result.error.message);
+}
+
+// ❌ Bad - manual validation
+if (!data.companyName || data.companyName.length === 0) {
+  throw new Error("Company name is required");
+}
+```
+
+### 2. Derive Schemas, Don't Duplicate
+
+```typescript
+// ✅ Good - derive from base
+export const updateSchema = baseSchema.pick({ companyName: true });
+
+// ❌ Bad - duplicate definition
+export const updateSchema = z.object({
+  companyName: z.string().min(1),
+});
+```
+
+### 3. Export Types
+
+```typescript
+// ✅ Good - export inferred types
+export type CreateHiringProcess = z.infer<typeof createHiringProcessSchema>;
+
+// ❌ Bad - define types separately
+export type CreateHiringProcess = {
+  companyName: string;
+  status: string;
+};
+```
+
+### 4. Use Descriptive Error Messages
+
+```typescript
+// ✅ Good - clear messages
+z.string().min(1, "Company name is required")
+z.number().min(0, "Salary must be positive")
+
+// ❌ Bad - no messages
+z.string().min(1)
+z.number().min(0)
+```
+
+### 5. Handle Validation Errors Gracefully
+
+```typescript
+// Frontend
+const result = schema.safeParse(data);
+if (!result.success) {
+  // Show user-friendly errors
+  result.error.errors.forEach((err) => {
+    toast.error(`${err.path.join('.')}: ${err.message}`);
+  });
+}
+
+// Backend
+try {
+  const validated = schema.parse(body);
+} catch (error) {
+  if (error instanceof z.ZodError) {
+    throw new BadRequestError(error.errors[0].message);
+  }
+}
+```
+
+## Testing Schemas
+
+### Unit Tests
+
+```typescript
+import { describe, it, expect } from "vitest";
+import { createHiringProcessSchema } from "@interviews-tool/domain/schemas";
+
+describe("createHiringProcessSchema", () => {
+  it("should validate valid data", () => {
+    const data = {
+      companyName: "Acme Corp",
+      status: "ongoing",
+    };
+
+    const result = createHiringProcessSchema.safeParse(data);
+    expect(result.success).toBe(true);
+  });
+
+  it("should reject empty company name", () => {
+    const data = {
+      companyName: "",
+      status: "ongoing",
+    };
+
+    const result = createHiringProcessSchema.safeParse(data);
+    expect(result.success).toBe(false);
+  });
+
+  it("should accept optional salary", () => {
+    const data = {
+      companyName: "Acme Corp",
+      status: "ongoing",
+      salary: 100000,
+    };
+
+    const result = createHiringProcessSchema.safeParse(data);
+    expect(result.success).toBe(true);
+  });
+});
+```
+
+## Migration from Elysia `t` to Zod
+
+### Before (Elysia `t`)
+
+```typescript
+{
+  body: t.Object({
+    companyName: t.String({ minLength: 1 }),
+    status: t.Union([
+      t.Literal("ongoing"),
+      t.Literal("rejected"),
+    ]),
+    salary: t.Optional(t.Number({ minimum: 0 })),
+  }),
+}
+```
+
+### After (Zod schema)
+
+```typescript
+{
+  body: updateHiringProcessSchema, // from @interviews-tool/domain/schemas
+}
+```
+
+### Benefits of Migration:
+
+- ✅ Shared between frontend and backend
+- ✅ Better error messages
+- ✅ Easier to derive and compose
+- ✅ Type inference works better
+- ✅ More ecosystem support (React Hook Form, etc.)
+
+## Troubleshooting
+
+### Schema Not Found
+
+If you get import errors:
+
+1. Build the domain package:
+
+```bash
+bun run --filter=@interviews-tool/domain build
+```
+
+2. Check package.json exports:
+
+```json
+{
+  "exports": {
+    "./schemas": {
+      "types": "./dist/schemas.d.mts",
+      "import": "./dist/schemas.mjs"
+    }
+  }
+}
+```
+
+### Type Inference Issues
+
+If types aren't inferred correctly:
+
+```typescript
+// Use explicit type annotation
+const data: CreateHiringProcess = {
+  companyName: "Acme",
+  status: "ongoing",
+};
+
+// Or use satisfies
+const data = {
+  companyName: "Acme",
+  status: "ongoing",
+} satisfies CreateHiringProcess;
+```
+
+### Validation Errors in Production
+
+Always use `.safeParse()` instead of `.parse()` to avoid throwing:
+
+```typescript
+// ✅ Good - doesn't throw
+const result = schema.safeParse(data);
+if (!result.success) {
+  // handle error
+}
+
+// ❌ Bad - throws error
+const validated = schema.parse(data); // throws ZodError
+```
+
+## Next Steps
+
+- Review [Domain Architecture Patterns](/docs/domain-architecture-patterns) for architectural decisions
+- See [Backend Best Practices](/docs/backend) for API patterns
+- Check [Constants Pattern](/docs/constants-pattern) for using constants with schemas

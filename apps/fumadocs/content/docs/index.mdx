@@ -1,0 +1,53 @@
+---
+title: Welcome
+description: Interview Tracker Documentation
+---
+
+## Welcome to Interview Tracker
+
+A comprehensive web application for managing job interviews and tracking your entire job application journey.
+
+### Quick Links
+
+- [Concept V1](/docs/v1/concept) - Product concept and feature specifications
+- [Architecture](/docs/v1/architecture) - System architecture and design decisions
+
+### What is Interview Tracker?
+
+Interview Tracker is a modern web application that helps job seekers:
+
+- **Track Multiple Interviews** - Manage all your job applications in one place
+- **Record Interactions** - Keep a chronological history of all communications
+- **Store Company Information** - Organize salary, benefits, and contact details
+- **Monitor Progress** - Track interview stages and outcomes
+
+### Technology Stack
+
+Built with modern, type-safe technologies:
+
+- **Frontend:** React with TanStack Start (SSR)
+- **Backend:** Elysia (TypeScript)
+- **Database:** PostgreSQL with Drizzle ORM
+- **Authentication:** Better-Auth
+- **API:** ORPC (type-safe RPC)
+
+### Getting Started
+
+Check out the [Concept V1](/docs/v1/concept) document to understand the product vision and features, or dive into the [Architecture](/docs/v1/architecture) to see how everything fits together.
+
+### Example: System Flow
+
+```mermaid
+graph LR
+    A[Job Seeker] --> B[Interview Tracker]
+    B --> C[Track Applications]
+    B --> D[Record Interactions]
+    B --> E[Manage Companies]
+    C --> F[Success!]
+    D --> F
+    E --> F
+
+    style A fill:#3b82f6,stroke:#1e40af,stroke-width:2px,color:#fff
+    style B fill:#8b5cf6,stroke:#6d28d9,stroke-width:2px,color:#fff
+    style F fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff
+```

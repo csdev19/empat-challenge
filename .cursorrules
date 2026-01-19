@@ -1,0 +1,408 @@
+# Hiring Tool - Project Cursor Rules
+
+## Tech Stack
+
+### Monorepo Structure
+- **Package Manager**: Bun
+- **Build Tool**: Turbo
+- **Monorepo**: Turborepo with workspace packages
+
+### Backend
+- **Framework**: Elysia
+- **Database**: PostgreSQL with Drizzle ORM
+- **Authentication**: better-auth
+- **Validation**: Zod v4
+- **API Type Safety**: Eden Treaty
+
+### Frontend
+- **Framework**: React with TanStack Start
+- **Routing**: TanStack Router
+- **State Management**: TanStack Query (React Query)
+- **UI Library**: shadcn/ui with TailwindCSS
+- **Forms**: React Hook Form with Zod resolver
+- **Validation**: Zod v4
+
+### Documentation
+- **Framework**: Fumadocs (Starlight alternative)
+
+---
+
+## Code Standards
+
+### TypeScript
+- Use strict mode
+- Explicit return types for functions
+- Use `interface` for object shapes
+- Use `type` for unions and primitives
+- Avoid `any` - use `unknown` when type is truly unknown
+
+### Validation with Zod v4
+
+**IMPORTANT**: Always use Zod v4 syntax:
+
+```typescript
+// ✅ Zod v4 (CORRECT)
+z.uuid()                    // Not z.string().uuid()
+z.url()                     // Not z.string().url()
+z.email()                   // Not z.string().email()
+z.date()                    // For date objects
+z.coerce.date()             // To coerce strings to dates
+
+// ❌ Zod v3 syntax (WRONG - DO NOT USE)
+z.string().uuid()
+z.string().url()
+z.string().email()
+```
+
+### Schema Organization
+
+**Location**: `packages/domain/src/schemas/`
+
+**Pattern**: Schema-based architecture (not entity-based)
+- Base schema as source of truth
+- Derive create/update schemas using `.pick()`, `.omit()`, `.extend()`
+- Export inferred types
+
+**Example**:
+```typescript
+// packages/domain/src/schemas/entity-name.ts
+import { z } from "zod";
+
+// Base schema
+export const entityBaseSchema = z.object({
+  id: z.uuid(),                    // ✅ Zod v4
+  email: z.email(),                // ✅ Zod v4
+  website: z.url().nullable(),     // ✅ Zod v4
+  name: z.string().min(1),
+  createdAt: z.coerce.date(),
+});
+
+// Derived schemas
+export const createEntitySchema = entityBaseSchema.pick({
+  name: true,
+}).extend({
+  email: z.email().optional(),
+});
+
+export const updateEntitySchema = createEntitySchema;
+
+// Type exports
+export type EntityBase = z.infer<typeof entityBaseSchema>;
+export type CreateEntity = z.infer<typeof createEntitySchema>;
+export type UpdateEntity = z.infer<typeof updateEntitySchema>;
+```
+
+---
+
+## Backend Patterns
+
+### API Response Standardization
+
+All API responses MUST follow the `ApiResponse<T>` structure:
+- Success: `{ data: T, error: null }`
+- Error: `{ data: null, error: { message: string } }`
+- Paginated: Include `meta.pagination` with pagination metadata
+
+### Response Helpers
+
+Always use helpers from `apps/server/src/utils/response-helpers.ts`:
+- `successBody(data)` - 200 OK
+- `createdBody(data)` - 201 Created
+- `successWithPaginationBody(data, pagination, total)` - Paginated response
+- `errorBody(message)` - Error response
+
+### Validation in Routes
+
+Use Zod schemas from `@interviews-tool/domain/schemas`:
+
+```typescript
+import { updateEntitySchema } from "@interviews-tool/domain/schemas";
+
+export const routes = new Elysia({ prefix: "/api/entities" })
+  .put("/:id", async ({ body }) => {
+    // body is automatically validated and typed
+  }, {
+    body: updateEntitySchema,  // ✅ Use Zod schema from domain
+  });
+```
+
+### Error Handling
+
+Use custom errors from `apps/server/src/utils/errors.ts`:
+- `BadRequestError` - 400 (validation failures)
+- `UnauthorizedError` - 401 (auth required)
+- `ForbiddenError` - 403 (authorization failed)
+- `NotFoundError` - 404 (resource not found)
+- `ConflictError` - 409 (resource conflict)
+- `InternalServerError` - 500 (server errors)
+
+### Database Operations
+
+- Use typed enums from constants
+- Use `createTable()` from table-creator for consistent naming
+- Export types: `typeof table.$inferSelect` and `typeof table.$inferInsert`
+
+### Constants Pattern with Zod
+
+**IMPORTANT**: When using constants in Zod schemas, use the const object directly with `z.enum()`:
+
+```typescript
+// ✅ CORRECT: Use the const object directly
+import { z } from "zod";
+import { HIRING_PROCESS_STATUSES } from "@interviews-tool/domain/constants";
+
+export const schema = z.object({
+  status: z.enum(HIRING_PROCESS_STATUSES),
+});
+
+// ✅ CORRECT: For optional fields
+export const filterSchema = z.object({
+  status: z.enum(HIRING_PROCESS_STATUSES).optional(),
+});
+
+// ❌ WRONG: Don't use Object.values() - use the const object directly
+status: z.enum(Object.values(HIRING_PROCESS_STATUSES) as [string, ...string[]]),
+
+// ❌ WRONG: Don't use the values array - use the const object
+status: z.enum(HIRING_PROCESS_STATUS_VALUES),
+```
+
+**Key Principle**: According to [Zod's enum API](https://zod.dev/api#enum), `z.enum()` accepts enum-like object literals (`{ [key: string]: string | number }`). Use the const object (`HIRING_PROCESS_STATUSES`) directly - it is the single source of truth.
+
+For database enums (Drizzle), use the values array:
+
+```typescript
+// ✅ CORRECT: Database enum (Drizzle requires array)
+import { pgEnum } from "drizzle-orm/pg-core";
+import { HIRING_PROCESS_STATUS_VALUES } from "@interviews-tool/domain/constants";
+
+export const hiringProcessStatusEnum = pgEnum(
+  "hiring_process_status",
+  HIRING_PROCESS_STATUS_VALUES,
+);
+```
+
+---
+
+## Frontend Patterns
+
+### Import Organization
+
+1. React and framework imports
+2. Third-party libraries (alphabetical)
+3. Internal utilities and hooks (`@/lib`, `@/hooks`)
+4. Internal components (`@/components`)
+5. Relative imports
+
+### Component Structure
+
+```typescript
+interface ComponentProps {
+  required: string;
+  optional?: boolean;
+}
+
+export function Component({ required, optional = false }: ComponentProps) {
+  // 1. Hooks
+  // 2. Derived state
+  // 3. Event handlers
+  // 4. Effects
+  // 5. Render
+  
+  return <div>...</div>;
+}
+```
+
+### Form Validation
+
+Use Zod schemas with React Hook Form:
+
+```typescript
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { updateEntitySchema, type UpdateEntity } from "@interviews-tool/domain/schemas";
+
+export function EntityForm() {
+  const form = useForm<UpdateEntity>({
+    resolver: zodResolver(updateEntitySchema),
+  });
+
+  return <form onSubmit={form.handleSubmit(onSubmit)}>...</form>;
+}
+```
+
+### State Management
+
+- Use TanStack Query for server state
+- Use React state for UI state
+- Zustand only if shared state is needed
+
+### Query Keys
+
+Use query key factory pattern:
+
+```typescript
+export const entityKeys = {
+  all: ['entities'] as const,
+  lists: () => [...entityKeys.all, 'list'] as const,
+  detail: (id: string) => [...entityKeys.all, 'detail', id] as const,
+};
+```
+
+---
+
+## Workspace Structure
+
+```
+hiring-tool/
+├── apps/
+│   ├── fumadocs/          # Documentation
+│   ├── server/            # Elysia backend
+│   └── web/               # TanStack Start frontend
+├── packages/
+│   ├── auth/              # better-auth config
+│   ├── config/            # Shared TS configs
+│   ├── db/                # Drizzle ORM schemas
+│   ├── domain/            # Constants, types, schemas
+│   └── web-ui/            # shadcn/ui components
+```
+
+### Package Imports
+
+```typescript
+// From domain
+import { HIRING_PROCESS_STATUSES } from "@interviews-tool/domain/constants";
+import { type ApiResponse } from "@interviews-tool/domain/types";
+import { updateHiringProcessSchema } from "@interviews-tool/domain/schemas";
+
+// From database
+import { db } from "@interviews-tool/db";
+import { hiringProcess } from "@interviews-tool/db/schema";
+
+// From auth
+import { auth } from "@interviews-tool/auth";
+
+// From web-ui
+import { Button, Card } from "@interviews-tool/web-ui";
+```
+
+---
+
+## Documentation
+
+### When to Document
+
+Document these changes in `apps/fumadocs/content/docs/`:
+
+**Version-specific** (`v{version}/`):
+- New features or epics
+- Schema changes
+- API endpoint changes
+- DTO modifications
+- Implementation summaries
+
+**General** (root):
+- Framework patterns
+- Reusable utilities
+- Development guidelines
+- Package documentation
+
+### Documentation Structure
+
+```markdown
+---
+title: Document Title
+description: Brief description
+date: YYYY-MM-DD
+tags:
+  - relevant-tag
+---
+
+# Title
+
+Content...
+```
+
+---
+
+## Architecture Decisions
+
+### Domain Architecture: Schema-Based
+
+We use **Schema-Based architecture** (not Entity-Based/DDD) because:
+- CRUD-focused application
+- Fast iteration needed
+- API-first design
+- Validation is primary concern
+
+See `/docs/domain-architecture-patterns` for details.
+
+### Migration Path
+
+If complexity grows:
+1. Add domain functions alongside schemas
+2. Introduce value objects for complex types
+3. Consider full entity model if needed
+
+---
+
+## Common Tasks
+
+### Adding a New Entity
+
+1. Create constants in `packages/domain/src/constants/`
+2. Create schemas in `packages/domain/src/schemas/`
+3. Create database schema in `packages/db/src/schema/`
+4. Run migrations
+5. Create backend routes in `apps/server/src/routes/`
+6. Create frontend hooks in `apps/web/src/hooks/`
+7. Create UI components in `apps/web/src/components/`
+8. Document in `apps/fumadocs/content/docs/`
+
+### Building Packages
+
+```bash
+# Build domain package
+bun run --filter=@interviews-tool/domain build
+
+# Build all packages
+bun run build
+
+# Development mode
+bun run dev
+```
+
+---
+
+## Testing
+
+- Use Vitest for unit tests
+- Test business logic in services
+- Test components with React Testing Library
+- Mock external dependencies
+- Use MSW for API mocking
+
+---
+
+## Best Practices
+
+1. **Always use Zod v4 syntax** for validation
+2. **Derive schemas** - don't duplicate
+3. **Use response helpers** for consistent API responses
+4. **Export types** from schemas
+5. **Document significant changes** in fumadocs
+6. **Handle errors gracefully** with custom error classes
+7. **Use TypeScript strict mode**
+8. **Follow schema-based architecture** pattern
+9. **Keep components small** (< 200 lines)
+10. **Write descriptive validation messages**
+
+---
+
+## References
+
+- [Domain Architecture Patterns](/docs/domain-architecture-patterns)
+- [Schemas Implementation Guide](/docs/schemas-implementation)
+- [Backend Best Practices](/docs/backend)
+- [Constants Pattern](/docs/constants-pattern)
+
