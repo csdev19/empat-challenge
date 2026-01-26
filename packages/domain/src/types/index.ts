@@ -16,3 +16,35 @@ export type {
   PaginationParams,
   PaginationResult,
 } from "./api-response";
+
+// Export Game types
+export type {
+  GameStatus,
+  PlayerRole,
+  CardType,
+  CardState,
+  Match,
+  PlayerScore,
+  GameState,
+} from "./game-state";
+
+export type {
+  GameMessage,
+  JoinGameMessage,
+  FlipCardMessage,
+  CheckMatchMessage,
+  EndTurnMessage,
+  PauseGameMessage,
+  ResumeGameMessage,
+  EndGameMessage,
+  GameStateMessage,
+  CardFlippedMessage,
+  MatchResultMessage,
+  TurnChangedMessage,
+  GameCompletedMessage,
+  GamePausedMessage,
+  GameResumedMessage,
+  GameErrorMessage,
+  ClientGameMessage,
+  ServerGameMessage,
+} from "./game-messages";

@@ -1,0 +1,158 @@
+{
+  "cardSets": [
+    {
+      "id": "easy-animals-001",
+      "name": "Basic Animals",
+      "description": "Simple animal vocabulary for beginners",
+      "difficulty": "easy",
+      "category": "animals",
+      "cardCount": 4,
+      "cards": [
+        {
+          "id": "word-cat",
+          "type": "word",
+          "content": "Cat",
+          "matchId": "pic-cat",
+          "audioUrl": "/audio/cat.mp3"
+        },
+        {
+          "id": "pic-cat",
+          "type": "picture",
+          "content": "A fluffy orange cat",
+          "matchId": "word-cat",
+          "imageUrl": "/images/animals/cat.png"
+        },
+        {
+          "id": "word-dog",
+          "type": "word",
+          "content": "Dog",
+          "matchId": "pic-dog",
+          "audioUrl": "/audio/dog.mp3"
+        },
+        {
+          "id": "pic-dog",
+          "type": "picture",
+          "content": "A friendly brown dog",
+          "matchId": "word-dog",
+          "imageUrl": "/images/animals/dog.png"
+        },
+        {
+          "id": "word-bird",
+          "type": "word",
+          "content": "Bird",
+          "matchId": "pic-bird",
+          "audioUrl": "/audio/bird.mp3"
+        },
+        {
+          "id": "pic-bird",
+          "type": "picture",
+          "content": "A colorful bird",
+          "matchId": "word-bird",
+          "imageUrl": "/images/animals/bird.png"
+        },
+        {
+          "id": "word-fish",
+          "type": "word",
+          "content": "Fish",
+          "matchId": "pic-fish",
+          "audioUrl": "/audio/fish.mp3"
+        },
+        {
+          "id": "pic-fish",
+          "type": "picture",
+          "content": "A swimming fish",
+          "matchId": "word-fish",
+          "imageUrl": "/images/animals/fish.png"
+        }
+      ]
+    },
+    {
+      "id": "medium-objects-001",
+      "name": "Common Objects",
+      "description": "Everyday objects for intermediate learners",
+      "difficulty": "medium",
+      "category": "objects",
+      "cardCount": 6,
+      "cards": [
+        {
+          "id": "word-book",
+          "type": "word",
+          "content": "Book",
+          "matchId": "pic-book"
+        },
+        {
+          "id": "pic-book",
+          "type": "picture",
+          "content": "An open book",
+          "matchId": "word-book",
+          "imageUrl": "/images/objects/book.png"
+        },
+        {
+          "id": "word-chair",
+          "type": "word",
+          "content": "Chair",
+          "matchId": "pic-chair"
+        },
+        {
+          "id": "pic-chair",
+          "type": "picture",
+          "content": "A wooden chair",
+          "matchId": "word-chair",
+          "imageUrl": "/images/objects/chair.png"
+        },
+        {
+          "id": "word-table",
+          "type": "word",
+          "content": "Table",
+          "matchId": "pic-table"
+        },
+        {
+          "id": "pic-table",
+          "type": "picture",
+          "content": "A dining table",
+          "matchId": "word-table",
+          "imageUrl": "/images/objects/table.png"
+        },
+        {
+          "id": "word-lamp",
+          "type": "word",
+          "content": "Lamp",
+          "matchId": "pic-lamp"
+        },
+        {
+          "id": "pic-lamp",
+          "type": "picture",
+          "content": "A desk lamp",
+          "matchId": "word-lamp",
+          "imageUrl": "/images/objects/lamp.png"
+        },
+        {
+          "id": "word-window",
+          "type": "word",
+          "content": "Window",
+          "matchId": "pic-window"
+        },
+        {
+          "id": "pic-window",
+          "type": "picture",
+          "content": "A glass window",
+          "matchId": "word-window",
+          "imageUrl": "/images/objects/window.png"
+        },
+        {
+          "id": "word-door",
+          "type": "word",
+          "content": "Door",
+          "matchId": "pic-door"
+        },
+        {
+          "id": "pic-door",
+          "type": "picture",
+          "content": "A wooden door",
+          "matchId": "word-door",
+          "imageUrl": "/images/objects/door.png"
+        }
+      ]
+    }
+  ]
+}

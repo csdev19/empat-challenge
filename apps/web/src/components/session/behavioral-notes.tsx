@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@empat-challenge/web-ui";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button } from "@empat-challenge/web-ui";
 import { Textarea } from "@empat-challenge/web-ui";
 import { useSessionRecording, useUpdateSessionRecording } from "@/hooks/use-session-recording";
-import { Loader2 } from "lucide-react";
+import { Loader2, Save } from "lucide-react";
 
 interface BehavioralNotesProps {
   therapySessionId: string;
@@ -12,25 +12,34 @@ export function BehavioralNotes({ therapySessionId }: BehavioralNotesProps) {
   const { data: recording, isLoading } = useSessionRecording(therapySessionId);
   const updateRecording = useUpdateSessionRecording();
   const [notes, setNotes] = useState("");
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   // Initialize notes from recording
   useEffect(() => {
     if (recording?.behavioralNotes) {
       setNotes(recording.behavioralNotes);
+      setHasUnsavedChanges(false);
     }
   }, [recording]);
 
-  // Debounce auto-save
-  const debouncedNotes = useDebounce(notes, 1000);
-
-  useEffect(() => {
-    if (debouncedNotes !== recording?.behavioralNotes && recording) {
-      updateRecording.mutate({
+  const handleSave = () => {
+    updateRecording.mutate(
+      {
         therapySessionId,
-        data: { behavioralNotes: debouncedNotes },
-      });
-    }
-  }, [debouncedNotes, therapySessionId, recording, updateRecording]);
+        data: { behavioralNotes: notes },
+      },
+      {
+        onSuccess: () => {
+          setHasUnsavedChanges(false);
+        },
+      },
+    );
+  };
+
+  const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setNotes(e.target.value);
+    setHasUnsavedChanges(e.target.value !== recording?.behavioralNotes);
+  };
 
   if (isLoading) {
     return (
@@ -58,41 +67,37 @@ export function BehavioralNotes({ therapySessionId }: BehavioralNotesProps) {
       <CardContent className="space-y-4">
         <Textarea
           value={notes}
-          onChange={(e) => setNotes(e.target.value)}
+          onChange={handleNotesChange}
           placeholder="Enter behavioral notes, observations, or other relevant information..."
           rows={8}
           className="resize-none"
         />
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span>{notes.length} characters</span>
-          {updateRecording.isPending && (
-            <span className="flex items-center gap-2">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              Saving...
-            </span>
-          )}
-          {updateRecording.isSuccess && !updateRecording.isPending && (
-            <span className="text-green-600">Saved</span>
-          )}
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-muted-foreground">{notes.length} characters</span>
+          <div className="flex items-center gap-2">
+            {hasUnsavedChanges && (
+              <span className="text-sm text-muted-foreground">Unsaved changes</span>
+            )}
+            {updateRecording.isPending && (
+              <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Saving...
+              </span>
+            )}
+            {updateRecording.isSuccess && !updateRecording.isPending && !hasUnsavedChanges && (
+              <span className="text-sm text-green-600">Saved</span>
+            )}
+            <Button
+              onClick={handleSave}
+              disabled={updateRecording.isPending || !hasUnsavedChanges}
+              size="sm"
+            >
+              <Save className="h-4 w-4 mr-1" />
+              Save
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
   );
-}
-
-// Simple debounce hook
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value);
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
-
-  return debouncedValue;
 }

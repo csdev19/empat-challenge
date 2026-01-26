@@ -1,47 +1,68 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { useStudents } from "@/hooks/use-students";
-import { useGenerateSessionLink } from "@/hooks/use-therapy-sessions";
+import {
+  useGenerateSessionLink,
+  useTherapySessions,
+  useEndSession,
+} from "@/hooks/use-therapy-sessions";
 import { useSLP } from "@/hooks/use-slp";
-import { useSession } from "@/hooks/use-session";
 import { Button } from "@empat-challenge/web-ui";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@empat-challenge/web-ui";
 import { GenerateLinkDialog } from "@/components/therapy-session/generate-link-dialog";
-import { CreateSLPProfileDialog } from "@/components/slp/create-slp-profile-dialog";
 import { AddStudentsDialog } from "@/components/caseload/add-students-dialog";
 import Loader from "@/components/loader";
 import { toast } from "sonner";
-import { Link2, User, Calendar, Plus } from "lucide-react";
+import { Link2, User, Plus, Video, ExternalLink, Clock, Square } from "lucide-react";
 import type { SessionLinkResponse } from "@/hooks/use-therapy-sessions";
 import type { StudentBase } from "@/hooks/use-students";
+import { THERAPY_SESSION_STATUSES } from "@empat-challenge/domain/constants";
 
 export function CaseloadView() {
-  const { session } = useSession();
+  const navigate = useNavigate();
   const { data: slp, isLoading: slpLoading, error: slpError } = useSLP();
   const { data, isLoading, error } = useStudents();
+  const { data: sessionsData } = useTherapySessions();
   const generateLink = useGenerateSessionLink();
+  const endSession = useEndSession();
   const [selectedStudent, setSelectedStudent] = useState<StudentBase | null>(null);
   const [sessionLink, setSessionLink] = useState<SessionLinkResponse | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [createSLPDialogOpen, setCreateSLPDialogOpen] = useState(false);
   const [addStudentsDialogOpen, setAddStudentsDialogOpen] = useState(false);
 
-  // Show create SLP dialog if profile doesn't exist
-  useEffect(() => {
-    if (!slpLoading && slpError && session?.user) {
-      // Check if error is "not found" (404)
-      const errorMessage = slpError instanceof Error ? slpError.message : String(slpError);
-      if (errorMessage.includes("not found") || errorMessage.includes("404")) {
-        setCreateSLPDialogOpen(true);
-      }
-    }
-  }, [slpLoading, slpError, session]);
+  // Get active and scheduled sessions
+  // sessionsData structure: { data: T[], error: null, meta: {...} }
+  const sessions = sessionsData?.data || [];
+  const activeSessions = sessions.filter(
+    (s) =>
+      s.status === THERAPY_SESSION_STATUSES.ACTIVE ||
+      s.status === THERAPY_SESSION_STATUSES.SCHEDULED,
+  );
+  const hasActiveSession = activeSessions.length > 0;
 
-  const handleSLPProfileCreated = () => {
-    setCreateSLPDialogOpen(false);
-    toast.success("SLP profile created! You can now use the platform.");
-  };
+  // Redirect to onboarding if SLP profile doesn't exist
+  if (!slpLoading && slpError && !slp) {
+    const errorMessage = slpError instanceof Error ? slpError.message : String(slpError);
+    if (errorMessage.includes("not found") || errorMessage.includes("404")) {
+      navigate({ to: "/onboarding" });
+      return null;
+    }
+  }
+
+  // Get students list (handle empty case)
+  const students = error && (error instanceof Error && (error.message.includes("404") || error.message.includes("not found")))
+    ? []
+    : (data?.data || []);
 
   const handleGenerateLink = async () => {
+    // Check if there's already an active session
+    if (hasActiveSession) {
+      toast.error(
+        "You already have an active session. Please end the current session before creating a new one.",
+      );
+      return;
+    }
+
     // Get the first active student (or first student if no active filter)
     const activeStudents = students.filter((s) => !s.inactive);
     const studentToUse = activeStudents.length > 0 ? activeStudents[0] : students[0];
@@ -69,8 +90,18 @@ export function CaseloadView() {
     setSelectedStudent(null);
   };
 
-  // Show loading while checking SLP profile
-  if (slpLoading || isLoading) {
+  const handleEndSession = async (sessionId: string) => {
+    try {
+      await endSession.mutateAsync({ id: sessionId });
+      toast.success("Session ended successfully");
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to end session";
+      toast.error(errorMessage);
+    }
+  };
+
+  // Show loading while checking SLP profile or students
+  if (slpLoading || (slp && isLoading)) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader />
@@ -78,57 +109,33 @@ export function CaseloadView() {
     );
   }
 
-  // Show error if SLP profile doesn't exist (will trigger dialog)
-  if (slpError && !slp) {
-    const errorMessage = slpError instanceof Error ? slpError.message : String(slpError);
-    if (errorMessage.includes("not found") || errorMessage.includes("404")) {
+  // Only show students error if SLP profile exists
+  // If no SLP profile, we show the SLP profile creation dialog instead
+  if (error && slp) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    // If it's a 404 or "not found", it might mean no students yet (which is fine)
+    if (errorMessage.includes("404") || errorMessage.includes("not found")) {
+      // This is okay - just means no students in caseload yet
+    } else {
       return (
-        <>
-          <div className="space-y-6">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">Welcome!</h1>
-              <p className="text-muted-foreground mt-2">Create your SLP profile to get started</p>
-            </div>
-            <Card>
-              <CardHeader>
-                <CardTitle>SLP Profile Required</CardTitle>
-                <CardDescription>
-                  You need to create your Speech Language Pathologist profile before you can use the
-                  platform.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button onClick={() => setCreateSLPDialogOpen(true)}>Create SLP Profile</Button>
-              </CardContent>
-            </Card>
-          </div>
-          <CreateSLPProfileDialog
-            open={createSLPDialogOpen}
-            onOpenChange={setCreateSLPDialogOpen}
-            onSuccess={handleSLPProfileCreated}
-            defaultName={session?.user?.name || ""}
-          />
-        </>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Error</CardTitle>
+              <CardDescription>{errorMessage}</CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
       );
     }
   }
 
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Error</CardTitle>
-            <CardDescription>
-              {error instanceof Error ? error.message : "Failed to load students"}
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
-    );
+  // Only show students if SLP profile exists
+  // If no SLP profile, the dialog will be shown above
+  if (!slp) {
+    return null; // Will be handled by the SLP profile creation dialog above
   }
 
-  const students = data?.data || [];
   const pagination = data?.meta?.pagination;
 
   return (
@@ -144,11 +151,20 @@ export function CaseloadView() {
           {students.length > 0 && (
             <Button
               onClick={handleGenerateLink}
-              disabled={generateLink.isPending}
+              disabled={generateLink.isPending || hasActiveSession}
               variant="default"
+              title={
+                hasActiveSession
+                  ? "Please end the current active session before creating a new one"
+                  : undefined
+              }
             >
               <Link2 className="h-4 w-4 mr-2" />
-              {generateLink.isPending ? "Generating..." : "Generate Session Link"}
+              {generateLink.isPending
+                ? "Generating..."
+                : hasActiveSession
+                  ? "Active Session Exists"
+                  : "Generate Session Link"}
             </Button>
           )}
           <Button onClick={() => setAddStudentsDialogOpen(true)} variant="outline">
@@ -157,6 +173,98 @@ export function CaseloadView() {
           </Button>
         </div>
       </div>
+
+      {/* Active Sessions */}
+      {activeSessions.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Video className="h-5 w-5 text-primary" />
+              Active Sessions
+            </CardTitle>
+            <CardDescription>
+              You have an active session. End it before creating a new one.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {activeSessions.map((session) => (
+              <div
+                key={session.id}
+                className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+              >
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-medium">Session</span>
+                    <span
+                      className={`text-xs px-2 py-1 rounded-full ${
+                        session.status === THERAPY_SESSION_STATUSES.ACTIVE
+                          ? "bg-green-500/20 text-green-600 dark:text-green-400"
+                          : "bg-blue-500/20 text-blue-600 dark:text-blue-400"
+                      }`}
+                    >
+                      {session.status === THERAPY_SESSION_STATUSES.ACTIVE
+                        ? "Active"
+                        : "Scheduled"}
+                    </span>
+                  </div>
+                  {session.createdAt && (
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                      <Clock className="h-3 w-3" />
+                      Created{" "}
+                      {new Date(session.createdAt).toLocaleString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })}
+                    </div>
+                  )}
+                  {session.expiresAt && (
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Expires{" "}
+                      {new Date(session.expiresAt).toLocaleString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })}
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-2 ml-4">
+                  <Button
+                    onClick={() => {
+                      if (session.id) {
+                        navigate({ to: `/session/${session.id}` });
+                      } else if (session.linkToken) {
+                        navigate({ to: `/session/${session.linkToken}` });
+                      }
+                    }}
+                    variant="outline"
+                  >
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    View Session
+                  </Button>
+                  {(session.status === THERAPY_SESSION_STATUSES.ACTIVE ||
+                    session.status === THERAPY_SESSION_STATUSES.SCHEDULED) && (
+                    <Button
+                      onClick={() => handleEndSession(session.id)}
+                      disabled={endSession.isPending}
+                      variant="destructive"
+                      title="End this session to allow creating a new one"
+                    >
+                      <Square className="h-4 w-4 mr-2" />
+                      {endSession.isPending ? "Ending..." : "End Session"}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {students.length === 0 ? (
         <Card>
@@ -215,13 +323,6 @@ export function CaseloadView() {
         sessionLink={sessionLink}
         studentName={selectedStudent?.name || ""}
         onClose={handleCloseDialog}
-      />
-
-      <CreateSLPProfileDialog
-        open={createSLPDialogOpen}
-        onOpenChange={setCreateSLPDialogOpen}
-        onSuccess={handleSLPProfileCreated}
-        defaultName={session?.user?.name || ""}
       />
 
       <AddStudentsDialog

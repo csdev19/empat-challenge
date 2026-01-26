@@ -1,6 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { Button, Card, CardContent } from "@empat-challenge/web-ui";
 import { authClient } from "@/lib/auth-client";
+import { useUserRole } from "@/hooks/use-user-role";
 import {
   Briefcase,
   Building2,
@@ -17,6 +18,21 @@ export const Route = createFileRoute("/")({
 function HomePage() {
   const { data: session } = authClient.useSession();
   const isAuthenticated = !!session;
+  const { role, isLoading: roleLoading } = useUserRole();
+
+  // If authenticated, redirect based on role
+  if (isAuthenticated && !roleLoading) {
+    if (role === "teacher") {
+      return <Navigate to="/caseload" />;
+    }
+    if (role === "student") {
+      return <Navigate to="/student-dashboard" />;
+    }
+    // If role is unknown, redirect to onboarding
+    if (role === "unknown") {
+      return <Navigate to="/onboarding" />;
+    }
+  }
 
   return (
     <div className="min-h-screen bg-linear-to-b from-background to-muted/20">
@@ -29,31 +45,42 @@ function HomePage() {
               <span className="block text-primary mt-2">For SLPs and Students</span>
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Connect with your students through video sessions, interactive games, and track their progress all in one place.
+              Connect with your students through video sessions, interactive games, and track their
+              progress all in one place.
             </p>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-            {isAuthenticated ? (
-              <Link to="/caseload">
-                <Button size="lg" className="text-lg">
-                  Go to Caseload <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
-            ) : (
-              <>
-                <Link to="/auth/signup">
-                  <Button size="lg" className="text-lg">
-                    Get Started <ArrowRight className="ml-2 h-5 w-5" />
-                  </Button>
-                </Link>
-                <Link to="/auth/login">
-                  <Button size="lg" variant="outline" className="text-lg">
-                    Sign In
-                  </Button>
-                </Link>
-              </>
-            )}
+            {isAuthenticated && roleLoading ? (
+              <div className="text-muted-foreground">Loading...</div>
+            ) : !isAuthenticated ? (
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex flex-col gap-2">
+                  <Link to="/auth/teacher/signup">
+                    <Button size="lg" className="text-lg w-full sm:w-auto">
+                      Teacher Sign Up <ArrowRight className="ml-2 h-5 w-5" />
+                    </Button>
+                  </Link>
+                  <Link to="/auth/teacher/login">
+                    <Button size="sm" variant="ghost" className="text-sm w-full sm:w-auto">
+                      Teacher Sign In
+                    </Button>
+                  </Link>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Link to="/auth/student/signup">
+                    <Button size="lg" variant="outline" className="text-lg w-full sm:w-auto">
+                      Student Sign Up <ArrowRight className="ml-2 h-5 w-5" />
+                    </Button>
+                  </Link>
+                  <Link to="/auth/student/login">
+                    <Button size="sm" variant="ghost" className="text-sm w-full sm:w-auto">
+                      Student Sign In
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
@@ -74,7 +101,8 @@ function HomePage() {
                 </div>
                 <h3 className="text-xl font-semibold">Video Sessions</h3>
                 <p className="text-muted-foreground">
-                  Conduct therapy sessions with your students through secure video calls with integrated WebRTC technology.
+                  Conduct therapy sessions with your students through secure video calls with
+                  integrated WebRTC technology.
                 </p>
               </CardContent>
             </Card>
@@ -87,7 +115,8 @@ function HomePage() {
                 </div>
                 <h3 className="text-xl font-semibold">Interactive Games</h3>
                 <p className="text-muted-foreground">
-                  Engage students with Phaser-based interactive games synchronized in real-time for turn-based therapy activities.
+                  Engage students with Phaser-based interactive games synchronized in real-time for
+                  turn-based therapy activities.
                 </p>
               </CardContent>
             </Card>
@@ -100,7 +129,8 @@ function HomePage() {
                 </div>
                 <h3 className="text-xl font-semibold">Session Recording</h3>
                 <p className="text-muted-foreground">
-                  Track trial data, record behavioral notes, and monitor student progress throughout therapy sessions.
+                  Track trial data, record behavioral notes, and monitor student progress throughout
+                  therapy sessions.
                 </p>
               </CardContent>
             </Card>
@@ -126,7 +156,8 @@ function HomePage() {
                 </div>
                 <h3 className="text-xl font-semibold">Caseload Management</h3>
                 <p className="text-muted-foreground">
-                  Manage all your students from a centralized caseload view with quick access to generate session links.
+                  Manage all your students from a centralized caseload view with quick access to
+                  generate session links.
                 </p>
               </CardContent>
             </Card>
@@ -139,7 +170,8 @@ function HomePage() {
                 </div>
                 <h3 className="text-xl font-semibold">AI Session Summaries</h3>
                 <p className="text-muted-foreground">
-                  Get AI-generated summaries of therapy sessions to track key achievements and areas for improvement.
+                  Get AI-generated summaries of therapy sessions to track key achievements and areas
+                  for improvement.
                 </p>
               </CardContent>
             </Card>
@@ -159,12 +191,20 @@ function HomePage() {
                 ? "Access your caseload and start generating session links for your students."
                 : "Join now and start delivering virtual speech therapy sessions to your students."}
             </p>
-            <Link to={isAuthenticated ? "/caseload" : "/auth/signup"}>
-              <Button size="lg" className="text-lg">
-                {isAuthenticated ? "Go to Caseload" : "Create Free Account"}{" "}
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
+            {!isAuthenticated ? (
+              <div className="flex gap-4 justify-center">
+                <Link to="/auth/teacher/signup">
+                  <Button size="lg" className="text-lg">
+                    Teacher Sign Up <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                </Link>
+                <Link to="/auth/student/signup">
+                  <Button size="lg" variant="outline" className="text-lg">
+                    Student Sign Up <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                </Link>
+              </div>
+            ) : null}
           </CardContent>
         </Card>
       </div>

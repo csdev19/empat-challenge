@@ -4,6 +4,7 @@ import {
   gameOutputTable,
   therapySessionTable,
   slpTable,
+  studentTable,
   type NewGameOutput,
 } from "@empat-challenge/db/schemas";
 import { createGameOutputSchema, updateGameOutputSchema } from "@empat-challenge/domain/schemas";
@@ -36,7 +37,8 @@ export const gameOutputRoutes = new Elysia({ prefix: "/game-output" })
       }
 
       // Verify session exists and belongs to SLP
-      const [session] = await db
+      // Try by ID first, then by linkToken
+      let [session] = await db
         .select()
         .from(therapySessionTable)
         .where(
@@ -47,6 +49,21 @@ export const gameOutputRoutes = new Elysia({ prefix: "/game-output" })
           ),
         )
         .limit(1);
+
+      // If not found by ID, try by linkToken
+      if (!session) {
+        [session] = await db
+          .select()
+          .from(therapySessionTable)
+          .where(
+            and(
+              eq(therapySessionTable.linkToken, body.therapySessionId),
+              eq(therapySessionTable.slpId, slp.id),
+              isNull(therapySessionTable.deletedAt),
+            ),
+          )
+          .limit(1);
+      }
 
       if (!session) {
         throw new NotFoundError("Therapy session not found");
@@ -61,9 +78,10 @@ export const gameOutputRoutes = new Elysia({ prefix: "/game-output" })
 
       // Create game output record
       // Drizzle handles JSONB automatically - can pass objects directly
+      // Use the actual session ID (not the linkToken if that's what was passed)
       const newGameOutput: NewGameOutput = {
         id: crypto.randomUUID(),
-        therapySessionId: body.therapySessionId,
+        therapySessionId: session.id,
         gameType: body.gameType,
         gameState: body.gameState || null,
         score: body.score || null,
@@ -163,52 +181,112 @@ export const gameOutputRoutes = new Elysia({ prefix: "/game-output" })
   .get(
     "/",
     async ({ query, db, user }) => {
-      const therapySessionId = query.therapySessionId;
+      const therapySessionIdOrToken = query.therapySessionId;
 
-      if (!therapySessionId) {
+      if (!therapySessionIdOrToken) {
         throw new BadRequestError("therapySessionId query parameter is required");
       }
 
-      // Get SLP for the authenticated user
+      console.log("[game-output] Fetching game outputs", {
+        therapySessionIdOrToken,
+        userId: user.id,
+      });
+
+      // Check if user is SLP or Student
       const [slp] = await db
         .select()
         .from(slpTable)
         .where(and(eq(slpTable.userId, user.id), isNull(slpTable.deletedAt)))
         .limit(1);
 
-      if (!slp) {
-        throw new NotFoundError("SLP profile not found");
+      const [student] = await db
+        .select()
+        .from(studentTable)
+        .where(and(eq(studentTable.userId, user.id), isNull(studentTable.deletedAt)))
+        .limit(1);
+
+      if (!slp && !student) {
+        console.error("[game-output] Neither SLP nor Student profile found", { userId: user.id });
+        throw new NotFoundError("Profile not found. Please create your profile first.");
       }
 
-      // Verify session belongs to SLP
-      const [session] = await db
+      console.log("[game-output] User profile found", {
+        isSLP: !!slp,
+        isStudent: !!student,
+        slpId: slp?.id,
+        studentId: student?.id,
+      });
+
+      // Try to find session by ID first, then by linkToken
+      let [session] = await db
         .select()
         .from(therapySessionTable)
         .where(
           and(
-            eq(therapySessionTable.id, therapySessionId),
-            eq(therapySessionTable.slpId, slp.id),
+            eq(therapySessionTable.id, therapySessionIdOrToken),
             isNull(therapySessionTable.deletedAt),
           ),
         )
         .limit(1);
 
+      // If not found by ID, try by linkToken
       if (!session) {
+        console.log("[game-output] Not found by ID, trying linkToken", {
+          linkToken: therapySessionIdOrToken,
+        });
+        [session] = await db
+          .select()
+          .from(therapySessionTable)
+          .where(
+            and(
+              eq(therapySessionTable.linkToken, therapySessionIdOrToken),
+              isNull(therapySessionTable.deletedAt),
+            ),
+          )
+          .limit(1);
+      }
+
+      if (!session) {
+        console.error("[game-output] Therapy session not found", {
+          therapySessionIdOrToken,
+        });
         throw new NotFoundError("Therapy session not found");
       }
 
+      // Verify user has access to this session
+      if (slp && session.slpId !== slp.id) {
+        console.error("[game-output] Session does not belong to SLP", {
+          sessionSlpId: session.slpId,
+          userSlpId: slp.id,
+        });
+        throw new NotFoundError("Therapy session not found");
+      }
+
+      if (student && session.studentId !== student.id) {
+        console.error("[game-output] Session does not belong to student", {
+          sessionStudentId: session.studentId,
+          userStudentId: student.id,
+        });
+        throw new NotFoundError("Therapy session not found");
+      }
+
+      console.log("[game-output] Session found", {
+        sessionId: session.id,
+        linkToken: session.linkToken,
+      });
+
       // Get all game outputs for session
       // Drizzle automatically parses JSONB fields
+      // Use the actual session ID (not the linkToken if that's what was passed)
       const gameOutputs = await db
         .select()
         .from(gameOutputTable)
         .where(
-          and(
-            eq(gameOutputTable.therapySessionId, therapySessionId),
-            isNull(gameOutputTable.deletedAt),
-          ),
+          and(eq(gameOutputTable.therapySessionId, session.id), isNull(gameOutputTable.deletedAt)),
         )
         .orderBy(desc(gameOutputTable.createdAt));
+
+      console.log("[game-output] Found game outputs", { count: gameOutputs.length });
 
       return successBody(gameOutputs);
     },

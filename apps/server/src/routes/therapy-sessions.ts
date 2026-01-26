@@ -23,10 +23,7 @@ import {
 import { errorHandlerPlugin } from "../utils/error-handler-plugin";
 import { getEnv } from "../utils/env";
 import { authMacro } from "@/plugins/auth.plugin";
-import {
-  createDailyRoom,
-  generateSessionTokens,
-} from "../utils/daily-client";
+import { createDailyRoom, generateSessionTokens } from "../utils/daily-client";
 import { THERAPY_SESSION_STATUSES } from "@empat-challenge/domain/constants";
 
 const env = getEnv();
@@ -90,6 +87,29 @@ export const therapySessionRoutes = new Elysia({ prefix: "/therapy-sessions" })
           studentId: studentResult.id,
           studentName: studentResult.name,
         });
+
+        // Check if there's already an active session for this SLP
+        const [activeSession] = await db
+          .select()
+          .from(therapySessionTable)
+          .where(
+            and(
+              eq(therapySessionTable.slpId, slp.id),
+              eq(therapySessionTable.status, THERAPY_SESSION_STATUSES.ACTIVE),
+              isNull(therapySessionTable.deletedAt),
+            ),
+          )
+          .limit(1);
+
+        if (activeSession) {
+          console.error("[generate-link] Active session already exists", {
+            activeSessionId: activeSession.id,
+            slpId: slp.id,
+          });
+          throw new ConflictError(
+            "You already have an active session. Please end the current session before creating a new one.",
+          );
+        }
 
         // Generate unique link token
         const linkToken = crypto.randomUUID();
@@ -216,12 +236,7 @@ export const therapySessionRoutes = new Elysia({ prefix: "/therapy-sessions" })
       const sessions = await db
         .select()
         .from(therapySessionTable)
-        .where(
-          and(
-            eq(therapySessionTable.slpId, slp.id),
-            isNull(therapySessionTable.deletedAt),
-          ),
-        )
+        .where(and(eq(therapySessionTable.slpId, slp.id), isNull(therapySessionTable.deletedAt)))
         .orderBy(desc(therapySessionTable.createdAt))
         .limit(pagination.limit)
         .offset(pagination.offset);
@@ -229,12 +244,7 @@ export const therapySessionRoutes = new Elysia({ prefix: "/therapy-sessions" })
       const countResult = await db
         .select({ count: sql<number>`count(*)` })
         .from(therapySessionTable)
-        .where(
-          and(
-            eq(therapySessionTable.slpId, slp.id),
-            isNull(therapySessionTable.deletedAt),
-          ),
-        );
+        .where(and(eq(therapySessionTable.slpId, slp.id), isNull(therapySessionTable.deletedAt)));
 
       const total = countResult[0] ? Number(countResult[0].count) : 0;
 
@@ -246,34 +256,194 @@ export const therapySessionRoutes = new Elysia({ prefix: "/therapy-sessions" })
     },
   )
   .get(
+    "/student",
+    async ({ query, status, db, user }) => {
+      console.log("[therapy-sessions/student] Fetching sessions for student", {
+        userId: user.id,
+      });
+
+      const pagination = getPaginationParams(query);
+
+      // Get student profile for the authenticated user
+      const [student] = await db
+        .select()
+        .from(studentTable)
+        .where(and(eq(studentTable.userId, user.id), isNull(studentTable.deletedAt)))
+        .limit(1);
+
+      if (!student) {
+        console.error("[therapy-sessions/student] Student profile not found", {
+          userId: user.id,
+        });
+        throw new NotFoundError("Student profile not found. Please create your student profile first.");
+      }
+
+      console.log("[therapy-sessions/student] Student found", {
+        studentId: student.id,
+        studentName: student.name,
+      });
+
+      // Get sessions for this student
+      const sessions = await db
+        .select()
+        .from(therapySessionTable)
+        .where(
+          and(
+            eq(therapySessionTable.studentId, student.id),
+            isNull(therapySessionTable.deletedAt),
+          ),
+        )
+        .orderBy(desc(therapySessionTable.createdAt))
+        .limit(pagination.limit)
+        .offset(pagination.offset);
+
+      console.log("[therapy-sessions/student] Sessions found", {
+        studentId: student.id,
+        sessionCount: sessions.length,
+        sessions: sessions.map((s) => ({
+          id: s.id,
+          status: s.status,
+          linkToken: s.linkToken,
+        })),
+      });
+
+      const countResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(therapySessionTable)
+        .where(
+          and(
+            eq(therapySessionTable.studentId, student.id),
+            isNull(therapySessionTable.deletedAt),
+          ),
+        );
+
+      const total = countResult[0] ? Number(countResult[0].count) : 0;
+
+      console.log("[therapy-sessions/student] Returning response", {
+        total,
+        returnedCount: sessions.length,
+      });
+
+      return status(200, successWithPaginationBody(sessions, pagination, total));
+    },
+    {
+      query: paginationQuerySchema,
+      isAuth: true,
+    },
+  )
+  .get(
     "/:id",
     async ({ params, db, user }) => {
-      // Get SLP for the authenticated user
+      console.log("[therapy-sessions/:id] Fetching session", { id: params.id, userId: user.id });
+
+      // Check if user is SLP or Student
       const [slp] = await db
         .select()
         .from(slpTable)
         .where(and(eq(slpTable.userId, user.id), isNull(slpTable.deletedAt)))
         .limit(1);
 
-      if (!slp) {
-        throw new NotFoundError("SLP profile not found");
-      }
-
-      const [result] = await db
+      const [student] = await db
         .select()
-        .from(therapySessionTable)
-        .where(
-          and(
-            eq(therapySessionTable.id, params.id),
-            eq(therapySessionTable.slpId, slp.id),
-            isNull(therapySessionTable.deletedAt),
-          ),
-        )
+        .from(studentTable)
+        .where(and(eq(studentTable.userId, user.id), isNull(studentTable.deletedAt)))
         .limit(1);
 
+      if (!slp && !student) {
+        console.error("[therapy-sessions/:id] Neither SLP nor Student profile found", {
+          userId: user.id,
+        });
+        throw new NotFoundError("Profile not found. Please create your profile first.");
+      }
+
+      let result = null;
+
+      // If user is SLP, find session by SLP ID
+      if (slp) {
+        console.log("[therapy-sessions/:id] User is SLP", { slpId: slp.id });
+
+        // Try to find by ID first, then by linkToken if not found
+        [result] = await db
+          .select()
+          .from(therapySessionTable)
+          .where(
+            and(
+              eq(therapySessionTable.id, params.id),
+              eq(therapySessionTable.slpId, slp.id),
+              isNull(therapySessionTable.deletedAt),
+            ),
+          )
+          .limit(1);
+
+        // If not found by ID, try by linkToken
+        if (!result) {
+          console.log("[therapy-sessions/:id] Not found by ID, trying linkToken", {
+            linkToken: params.id,
+          });
+          [result] = await db
+            .select()
+            .from(therapySessionTable)
+            .where(
+              and(
+                eq(therapySessionTable.linkToken, params.id),
+                eq(therapySessionTable.slpId, slp.id),
+                isNull(therapySessionTable.deletedAt),
+              ),
+            )
+            .limit(1);
+        }
+      }
+
+      // If user is Student, find session by Student ID
+      if (!result && student) {
+        console.log("[therapy-sessions/:id] User is Student", { studentId: student.id });
+
+        // Try to find by ID first, then by linkToken if not found
+        [result] = await db
+          .select()
+          .from(therapySessionTable)
+          .where(
+            and(
+              eq(therapySessionTable.id, params.id),
+              eq(therapySessionTable.studentId, student.id),
+              isNull(therapySessionTable.deletedAt),
+            ),
+          )
+          .limit(1);
+
+        // If not found by ID, try by linkToken
+        if (!result) {
+          console.log("[therapy-sessions/:id] Not found by ID, trying linkToken", {
+            linkToken: params.id,
+          });
+          [result] = await db
+            .select()
+            .from(therapySessionTable)
+            .where(
+              and(
+                eq(therapySessionTable.linkToken, params.id),
+                eq(therapySessionTable.studentId, student.id),
+                isNull(therapySessionTable.deletedAt),
+              ),
+            )
+            .limit(1);
+        }
+      }
+
       if (!result) {
+        console.error("[therapy-sessions/:id] Session not found", {
+          id: params.id,
+          userId: user.id,
+          isSLP: !!slp,
+          isStudent: !!student,
+        });
         throw new NotFoundError("Therapy session not found");
       }
+
+      console.log("[therapy-sessions/:id] Session found", {
+        sessionId: result.id,
+        linkToken: result.linkToken,
+      });
 
       return successBody(result);
     },
@@ -357,6 +527,11 @@ export const therapySessionRoutes = new Elysia({ prefix: "/therapy-sessions" })
   .post(
     "/:id/start",
     async ({ params, status, db, user }) => {
+      console.log("[therapy-sessions/:id/start] Starting session", {
+        id: params.id,
+        userId: user.id,
+      });
+
       // Get SLP for the authenticated user
       const [slp] = await db
         .select()
@@ -365,6 +540,7 @@ export const therapySessionRoutes = new Elysia({ prefix: "/therapy-sessions" })
         .limit(1);
 
       if (!slp) {
+        console.error("[therapy-sessions/:id/start] SLP not found", { userId: user.id });
         throw new NotFoundError("SLP profile not found");
       }
 
@@ -382,8 +558,39 @@ export const therapySessionRoutes = new Elysia({ prefix: "/therapy-sessions" })
         .limit(1);
 
       if (!existing) {
+        console.error("[therapy-sessions/:id/start] Session not found", {
+          id: params.id,
+          slpId: slp.id,
+        });
         throw new NotFoundError("Therapy session not found");
       }
+
+      // If already active, return existing session (idempotent)
+      if (existing.status === THERAPY_SESSION_STATUSES.ACTIVE) {
+        console.log("[therapy-sessions/:id/start] Session already active, returning existing", {
+          sessionId: existing.id,
+        });
+        return status(200, successBody(existing));
+      }
+
+      // Don't allow starting if already completed or cancelled
+      if (
+        existing.status === THERAPY_SESSION_STATUSES.COMPLETED ||
+        existing.status === THERAPY_SESSION_STATUSES.CANCELLED
+      ) {
+        console.error("[therapy-sessions/:id/start] Cannot start completed/cancelled session", {
+          sessionId: existing.id,
+          status: existing.status,
+        });
+        throw new BadRequestError(
+          `Cannot start a session that is ${existing.status}. Only scheduled sessions can be started.`,
+        );
+      }
+
+      console.log("[therapy-sessions/:id/start] Updating session to active", {
+        sessionId: existing.id,
+        previousStatus: existing.status,
+      });
 
       // Update status to active and set start time
       const [updated] = await db
@@ -395,6 +602,11 @@ export const therapySessionRoutes = new Elysia({ prefix: "/therapy-sessions" })
         })
         .where(eq(therapySessionTable.id, params.id))
         .returning();
+
+      console.log("[therapy-sessions/:id/start] Session started successfully", {
+        sessionId: updated.id,
+        status: updated.status,
+      });
 
       return status(200, successBody(updated));
     },
@@ -473,44 +685,76 @@ export const therapySessionRoutes = new Elysia({ prefix: "/therapy-sessions" })
   )
   .get(
     "/:id/join-info",
-    async ({ params, db, user }) => {
-      // Look up session by ID (public endpoint for student access, authenticated for SLP)
-      const [session] = await db
+    async ({ params, db, request }) => {
+      // Manually extract user from session (endpoint is public but we want to check if user is SLP)
+      const { getEnv } = await import("../utils/env");
+      const env = getEnv();
+      const { createAuth } = await import("@empat-challenge/auth");
+      const auth = createAuth(env.CORS_ORIGIN);
+      const authSession = await auth.api.getSession({ headers: request.headers });
+      const user = authSession?.user || null;
+
+      console.log("[therapy-sessions/:id/join-info] Fetching session", {
+        id: params.id,
+        userId: user?.id,
+        hasSession: !!authSession,
+      });
+
+      // Try to find by ID first, then by linkToken if not found
+      let [therapySession] = await db
         .select()
         .from(therapySessionTable)
-        .where(
-          and(
-            eq(therapySessionTable.id, params.id),
-            isNull(therapySessionTable.deletedAt),
-          ),
-        )
+        .where(and(eq(therapySessionTable.id, params.id), isNull(therapySessionTable.deletedAt)))
         .limit(1);
 
-      if (!session) {
+      // If not found by ID, try by linkToken
+      if (!therapySession) {
+        console.log("[therapy-sessions/:id/join-info] Not found by ID, trying linkToken", {
+          linkToken: params.id,
+        });
+        [therapySession] = await db
+          .select()
+          .from(therapySessionTable)
+          .where(
+            and(
+              eq(therapySessionTable.linkToken, params.id),
+              isNull(therapySessionTable.deletedAt),
+            ),
+          )
+          .limit(1);
+      }
+
+      if (!therapySession) {
+        console.log("[therapy-sessions/:id/join-info] Session not found", { id: params.id });
         throw new NotFoundError("Therapy session not found");
       }
+
+      console.log("[therapy-sessions/:id/join-info] Session found", {
+        sessionId: therapySession.id,
+        linkToken: therapySession.linkToken,
+      });
 
       // Regenerate tokens
       const { generateSessionTokens } = await import("../utils/daily-client");
       const { studentTable, slpTable } = await import("@empat-challenge/db/schemas");
-      
+
       const [student] = await db
         .select({ name: studentTable.name })
         .from(studentTable)
-        .where(eq(studentTable.id, session.studentId))
+        .where(eq(studentTable.id, therapySession.studentId))
         .limit(1);
 
       const [slp] = await db
         .select({ name: slpTable.name })
         .from(slpTable)
-        .where(eq(slpTable.id, session.slpId))
+        .where(eq(slpTable.id, therapySession.slpId))
         .limit(1);
 
       if (!student || !slp) {
         throw new NotFoundError("Student or SLP not found");
       }
 
-      const roomName = `session-${session.linkToken}`;
+      const roomName = `session-${therapySession.linkToken}`;
       const { slpToken, studentToken } = await generateSessionTokens(
         roomName,
         slp.name,
@@ -521,16 +765,40 @@ export const therapySessionRoutes = new Elysia({ prefix: "/therapy-sessions" })
       // Check if user is authenticated and is the SLP
       let isSLP = false;
       if (user) {
+        console.log("[therapy-sessions/:id/join-info] User authenticated", {
+          userId: user.id,
+          sessionSlpId: therapySession.slpId,
+        });
         const [userSlp] = await db
           .select()
           .from(slpTable)
           .where(and(eq(slpTable.userId, user.id), isNull(slpTable.deletedAt)))
           .limit(1);
-        isSLP = userSlp?.id === session.slpId;
+
+        if (userSlp) {
+          console.log("[therapy-sessions/:id/join-info] User SLP found", {
+            userSlpId: userSlp.id,
+            sessionSlpId: therapySession.slpId,
+            matches: userSlp.id === therapySession.slpId,
+          });
+          isSLP = userSlp.id === therapySession.slpId;
+        } else {
+          console.log("[therapy-sessions/:id/join-info] User has no SLP profile", {
+            userId: user.id,
+          });
+        }
+      } else {
+        console.log("[therapy-sessions/:id/join-info] User not authenticated");
       }
 
+      console.log("[therapy-sessions/:id/join-info] Returning join info", {
+        hasSlpToken: isSLP,
+        hasStudentToken: !!studentToken,
+        dailyRoomUrl: therapySession.dailyRoomUrl,
+      });
+
       return successBody({
-        dailyRoomUrl: session.dailyRoomUrl,
+        dailyRoomUrl: therapySession.dailyRoomUrl,
         studentToken,
         ...(isSLP && { slpToken }), // Only return SLP token if authenticated as SLP
       });

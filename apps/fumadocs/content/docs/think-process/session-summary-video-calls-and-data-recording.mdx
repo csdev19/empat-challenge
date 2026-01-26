@@ -245,7 +245,7 @@ Endpoints for recording trial data:
   - Authorization: SLP only
 
 - `POST /api/v1/trial-data/batch` - Create multiple trial records at once
-  - Input: `TrialDataBatch` (therapySessionId, trials: [{ isCorrect, notes?, timestamp? }])
+  - Input: `TrialDataBatch` `(therapySessionId, trials: [{ isCorrect, notes?, timestamp? }])`
   - Process:
     1. Verify session exists and belongs to authenticated SLP
     2. Verify session is active

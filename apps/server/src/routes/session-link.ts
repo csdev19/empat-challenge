@@ -82,8 +82,34 @@ export const sessionLinkRoutes = new Elysia({ prefix: "/session-link" })
       }
 
       // Regenerate student token (tokens can be regenerated as needed)
-      // Get room name from dailyRoomUrl or use session ID
-      const roomName = `session-${session.linkToken}`;
+      // Extract room name from dailyRoomUrl (format: https://domain.daily.co/room-name)
+      // Daily.co URLs are typically: https://domain.daily.co/room-name
+      let roomName: string;
+      try {
+        // Try to extract room name from URL (e.g., "https://domain.daily.co/session-abc123" -> "session-abc123")
+        const url = new URL(session.dailyRoomUrl);
+        // Remove leading slash and get the pathname
+        roomName = url.pathname.replace(/^\//, "") || `session-${session.linkToken}`;
+        console.log("[session-link/validate] Extracted room name from URL", {
+          url: session.dailyRoomUrl,
+          pathname: url.pathname,
+          roomName,
+        });
+      } catch (err) {
+        // Fallback to linkToken-based room name (this is what we use when creating the room)
+        roomName = `session-${session.linkToken}`;
+        console.log("[session-link/validate] Using fallback room name", {
+          roomName,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+
+      console.log("[session-link/validate] Generating student token", {
+        roomName,
+        dailyRoomUrl: session.dailyRoomUrl,
+        linkToken: session.linkToken,
+      });
+
       const { generateSessionTokens } = await import("../utils/daily-client");
       const { studentToken } = await generateSessionTokens(
         roomName,
@@ -91,6 +117,10 @@ export const sessionLinkRoutes = new Elysia({ prefix: "/session-link" })
         student.name,
         24 * 60 * 60, // 24 hours expiration
       );
+
+      console.log("[session-link/validate] Student token generated", {
+        tokenLength: studentToken.length,
+      });
 
       return status(200, successBody({
         sessionId: session.id,

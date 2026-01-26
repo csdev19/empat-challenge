@@ -66,7 +66,7 @@ export function useTherapySession(id: string) {
   });
 }
 
-// Fetch all therapy sessions
+// Fetch all therapy sessions (for SLP)
 export function useTherapySessions() {
   return useQuery({
     queryKey: therapySessionKeys.list(),
@@ -76,7 +76,42 @@ export function useTherapySessions() {
       if (result.error) {
         throw new Error(getErrorMessage(result.error));
       }
-      return result.data;
+
+      if (!result.data) {
+        throw new Error("No data returned from server");
+      }
+
+      const { error, data } = result.data;
+      if (error) {
+        throw new Error(error?.message || "An error occurred");
+      }
+
+      return { data, meta: result.data.meta };
+    },
+  });
+}
+
+// Fetch student's therapy sessions
+export function useStudentSessions() {
+  return useQuery({
+    queryKey: [...therapySessionKeys.all, "student"],
+    queryFn: async () => {
+      const result = await clientTreaty.api.v1["therapy-sessions"]["student"].get();
+
+      if (result.error) {
+        throw new Error(getErrorMessage(result.error));
+      }
+
+      if (!result.data) {
+        throw new Error("No data returned from server");
+      }
+
+      const { error, data } = result.data;
+      if (error) {
+        throw new Error(error?.message || "An error occurred");
+      }
+
+      return { data, meta: result.data.meta };
     },
   });
 }

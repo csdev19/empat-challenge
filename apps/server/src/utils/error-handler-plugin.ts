@@ -62,6 +62,13 @@ export const errorHandlerPlugin = new Elysia()
     }
 
     // Handle unknown errors
+    console.error("[Error Handler] Unknown error:", {
+      code,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     set.status = 500;
-    return errorBody("Internal server error");
+    return errorBody(
+      error instanceof Error ? error.message : "Internal server error",
+    );
   });

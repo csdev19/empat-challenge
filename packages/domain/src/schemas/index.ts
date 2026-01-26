@@ -6,9 +6,13 @@ export {
   studentBaseSchema,
   createStudentSchema,
   updateStudentSchema,
+  createStudentProfileSchema,
+  updateStudentProfileSchema,
   type StudentBase,
   type CreateStudent,
   type UpdateStudent,
+  type CreateStudentProfile,
+  type UpdateStudentProfile,
 } from "./student";
 
 // SLP schemas

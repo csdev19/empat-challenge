@@ -7,9 +7,7 @@ import {
   slpTable,
   type NewSessionRecording,
 } from "@empat-challenge/db/schemas";
-import {
-  updateSessionRecordingSchema,
-} from "@empat-challenge/domain/schemas";
+import { updateSessionRecordingSchema } from "@empat-challenge/domain/schemas";
 import { eq, and, isNull, sql } from "drizzle-orm";
 import { NotFoundError } from "../utils/errors";
 import { successBody } from "../utils/response-helpers";
@@ -50,12 +48,9 @@ async function getOrCreateSessionRecording(
     incorrectTrials: 0,
   };
 
-  const [created] = await db
-    .insert(sessionRecordingTable)
-    .values(newRecording)
-    .returning();
+  const [created] = await db.insert(sessionRecordingTable).values(newRecording).returning();
 
-  return { id: created.id };
+  return { id: created?.id || "" };
 }
 
 export const sessionRecordingRoutes = new Elysia({ prefix: "/session-recording" })
@@ -243,9 +238,7 @@ export const sessionRecordingRoutes = new Elysia({ prefix: "/session-recording" 
           totalTrials: total,
           correctTrials: correct,
           incorrectTrials: incorrect,
-          accuracyPercentage: accuracyPercentage
-            ? sql`${accuracyPercentage}::numeric(5,2)`
-            : null,
+          accuracyPercentage: accuracyPercentage ? sql`${accuracyPercentage}::numeric(5,2)` : null,
           updatedAt: new Date(),
         })
         .where(eq(sessionRecordingTable.id, recording.id))

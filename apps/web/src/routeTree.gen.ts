@@ -14,7 +14,13 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as SessionLinkTokenRouteImport } from './routes/session/$linkToken'
 import { Route as AuthSignupRouteImport } from './routes/auth/signup'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
+import { Route as AuthenticatedStudentDashboardIndexRouteImport } from './routes/_authenticated/student-dashboard/index'
+import { Route as AuthenticatedOnboardingIndexRouteImport } from './routes/_authenticated/onboarding/index'
 import { Route as AuthenticatedCaseloadIndexRouteImport } from './routes/_authenticated/caseload/index'
+import { Route as AuthTeacherSignupRouteImport } from './routes/auth/teacher/signup'
+import { Route as AuthTeacherLoginRouteImport } from './routes/auth/teacher/login'
+import { Route as AuthStudentSignupRouteImport } from './routes/auth/student/signup'
+import { Route as AuthStudentLoginRouteImport } from './routes/auth/student/login'
 import { Route as AuthenticatedSessionSessionIdRouteImport } from './routes/_authenticated/session/$sessionId'
 
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
@@ -41,12 +47,44 @@ const AuthLoginRoute = AuthLoginRouteImport.update({
   path: '/auth/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedStudentDashboardIndexRoute =
+  AuthenticatedStudentDashboardIndexRouteImport.update({
+    id: '/student-dashboard/',
+    path: '/student-dashboard/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedOnboardingIndexRoute =
+  AuthenticatedOnboardingIndexRouteImport.update({
+    id: '/onboarding/',
+    path: '/onboarding/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedCaseloadIndexRoute =
   AuthenticatedCaseloadIndexRouteImport.update({
     id: '/caseload/',
     path: '/caseload/',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthTeacherSignupRoute = AuthTeacherSignupRouteImport.update({
+  id: '/auth/teacher/signup',
+  path: '/auth/teacher/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthTeacherLoginRoute = AuthTeacherLoginRouteImport.update({
+  id: '/auth/teacher/login',
+  path: '/auth/teacher/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthStudentSignupRoute = AuthStudentSignupRouteImport.update({
+  id: '/auth/student/signup',
+  path: '/auth/student/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthStudentLoginRoute = AuthStudentLoginRouteImport.update({
+  id: '/auth/student/login',
+  path: '/auth/student/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedSessionSessionIdRoute =
   AuthenticatedSessionSessionIdRouteImport.update({
     id: '/session/$sessionId',
@@ -60,7 +98,13 @@ export interface FileRoutesByFullPath {
   '/auth/signup': typeof AuthSignupRoute
   '/session/$linkToken': typeof SessionLinkTokenRoute
   '/session/$sessionId': typeof AuthenticatedSessionSessionIdRoute
+  '/auth/student/login': typeof AuthStudentLoginRoute
+  '/auth/student/signup': typeof AuthStudentSignupRoute
+  '/auth/teacher/login': typeof AuthTeacherLoginRoute
+  '/auth/teacher/signup': typeof AuthTeacherSignupRoute
   '/caseload': typeof AuthenticatedCaseloadIndexRoute
+  '/onboarding': typeof AuthenticatedOnboardingIndexRoute
+  '/student-dashboard': typeof AuthenticatedStudentDashboardIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -68,7 +112,13 @@ export interface FileRoutesByTo {
   '/auth/signup': typeof AuthSignupRoute
   '/session/$linkToken': typeof SessionLinkTokenRoute
   '/session/$sessionId': typeof AuthenticatedSessionSessionIdRoute
+  '/auth/student/login': typeof AuthStudentLoginRoute
+  '/auth/student/signup': typeof AuthStudentSignupRoute
+  '/auth/teacher/login': typeof AuthTeacherLoginRoute
+  '/auth/teacher/signup': typeof AuthTeacherSignupRoute
   '/caseload': typeof AuthenticatedCaseloadIndexRoute
+  '/onboarding': typeof AuthenticatedOnboardingIndexRoute
+  '/student-dashboard': typeof AuthenticatedStudentDashboardIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -78,7 +128,13 @@ export interface FileRoutesById {
   '/auth/signup': typeof AuthSignupRoute
   '/session/$linkToken': typeof SessionLinkTokenRoute
   '/_authenticated/session/$sessionId': typeof AuthenticatedSessionSessionIdRoute
+  '/auth/student/login': typeof AuthStudentLoginRoute
+  '/auth/student/signup': typeof AuthStudentSignupRoute
+  '/auth/teacher/login': typeof AuthTeacherLoginRoute
+  '/auth/teacher/signup': typeof AuthTeacherSignupRoute
   '/_authenticated/caseload/': typeof AuthenticatedCaseloadIndexRoute
+  '/_authenticated/onboarding/': typeof AuthenticatedOnboardingIndexRoute
+  '/_authenticated/student-dashboard/': typeof AuthenticatedStudentDashboardIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -88,7 +144,13 @@ export interface FileRouteTypes {
     | '/auth/signup'
     | '/session/$linkToken'
     | '/session/$sessionId'
+    | '/auth/student/login'
+    | '/auth/student/signup'
+    | '/auth/teacher/login'
+    | '/auth/teacher/signup'
     | '/caseload'
+    | '/onboarding'
+    | '/student-dashboard'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -96,7 +158,13 @@ export interface FileRouteTypes {
     | '/auth/signup'
     | '/session/$linkToken'
     | '/session/$sessionId'
+    | '/auth/student/login'
+    | '/auth/student/signup'
+    | '/auth/teacher/login'
+    | '/auth/teacher/signup'
     | '/caseload'
+    | '/onboarding'
+    | '/student-dashboard'
   id:
     | '__root__'
     | '/'
@@ -105,7 +173,13 @@ export interface FileRouteTypes {
     | '/auth/signup'
     | '/session/$linkToken'
     | '/_authenticated/session/$sessionId'
+    | '/auth/student/login'
+    | '/auth/student/signup'
+    | '/auth/teacher/login'
+    | '/auth/teacher/signup'
     | '/_authenticated/caseload/'
+    | '/_authenticated/onboarding/'
+    | '/_authenticated/student-dashboard/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -114,6 +188,10 @@ export interface RootRouteChildren {
   AuthLoginRoute: typeof AuthLoginRoute
   AuthSignupRoute: typeof AuthSignupRoute
   SessionLinkTokenRoute: typeof SessionLinkTokenRoute
+  AuthStudentLoginRoute: typeof AuthStudentLoginRoute
+  AuthStudentSignupRoute: typeof AuthStudentSignupRoute
+  AuthTeacherLoginRoute: typeof AuthTeacherLoginRoute
+  AuthTeacherSignupRoute: typeof AuthTeacherSignupRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -153,12 +231,54 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/student-dashboard/': {
+      id: '/_authenticated/student-dashboard/'
+      path: '/student-dashboard'
+      fullPath: '/student-dashboard'
+      preLoaderRoute: typeof AuthenticatedStudentDashboardIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/onboarding/': {
+      id: '/_authenticated/onboarding/'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof AuthenticatedOnboardingIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/caseload/': {
       id: '/_authenticated/caseload/'
       path: '/caseload'
       fullPath: '/caseload'
       preLoaderRoute: typeof AuthenticatedCaseloadIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
+    }
+    '/auth/teacher/signup': {
+      id: '/auth/teacher/signup'
+      path: '/auth/teacher/signup'
+      fullPath: '/auth/teacher/signup'
+      preLoaderRoute: typeof AuthTeacherSignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/teacher/login': {
+      id: '/auth/teacher/login'
+      path: '/auth/teacher/login'
+      fullPath: '/auth/teacher/login'
+      preLoaderRoute: typeof AuthTeacherLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/student/signup': {
+      id: '/auth/student/signup'
+      path: '/auth/student/signup'
+      fullPath: '/auth/student/signup'
+      preLoaderRoute: typeof AuthStudentSignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/student/login': {
+      id: '/auth/student/login'
+      path: '/auth/student/login'
+      fullPath: '/auth/student/login'
+      preLoaderRoute: typeof AuthStudentLoginRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/session/$sessionId': {
       id: '/_authenticated/session/$sessionId'
@@ -173,11 +293,16 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteChildren {
   AuthenticatedSessionSessionIdRoute: typeof AuthenticatedSessionSessionIdRoute
   AuthenticatedCaseloadIndexRoute: typeof AuthenticatedCaseloadIndexRoute
+  AuthenticatedOnboardingIndexRoute: typeof AuthenticatedOnboardingIndexRoute
+  AuthenticatedStudentDashboardIndexRoute: typeof AuthenticatedStudentDashboardIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedSessionSessionIdRoute: AuthenticatedSessionSessionIdRoute,
   AuthenticatedCaseloadIndexRoute: AuthenticatedCaseloadIndexRoute,
+  AuthenticatedOnboardingIndexRoute: AuthenticatedOnboardingIndexRoute,
+  AuthenticatedStudentDashboardIndexRoute:
+    AuthenticatedStudentDashboardIndexRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
@@ -190,6 +315,10 @@ const rootRouteChildren: RootRouteChildren = {
   AuthLoginRoute: AuthLoginRoute,
   AuthSignupRoute: AuthSignupRoute,
   SessionLinkTokenRoute: SessionLinkTokenRoute,
+  AuthStudentLoginRoute: AuthStudentLoginRoute,
+  AuthStudentSignupRoute: AuthStudentSignupRoute,
+  AuthTeacherLoginRoute: AuthTeacherLoginRoute,
+  AuthTeacherSignupRoute: AuthTeacherSignupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
