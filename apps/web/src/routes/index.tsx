@@ -25,20 +25,19 @@ function HomePage() {
         <div className="max-w-4xl mx-auto text-center space-y-8">
           <div className="space-y-4">
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
-              Track Your Job Applications
-              <span className="block text-primary mt-2">All in One Place</span>
+              Virtual Speech Therapy Platform
+              <span className="block text-primary mt-2">For SLPs and Students</span>
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Stay organized during your job search. Manage applications, track company details, and
-              record every interaction in your hiring journey.
+              Connect with your students through video sessions, interactive games, and track their progress all in one place.
             </p>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
             {isAuthenticated ? (
-              <Link to="/hiring-processes">
+              <Link to="/caseload">
                 <Button size="lg" className="text-lg">
-                  Go to Dashboard <ArrowRight className="ml-2 h-5 w-5" />
+                  Go to Caseload <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
             ) : (
@@ -63,7 +62,7 @@ function HomePage() {
       <div className="container mx-auto px-4 py-16">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl font-bold text-center mb-12">
-            Everything You Need to Manage Your Job Search
+            Everything You Need for Virtual Therapy Sessions
           </h2>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -73,10 +72,9 @@ function HomePage() {
                 <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
                   <Briefcase className="h-6 w-6 text-primary" />
                 </div>
-                <h3 className="text-xl font-semibold">Application Tracking</h3>
+                <h3 className="text-xl font-semibold">Video Sessions</h3>
                 <p className="text-muted-foreground">
-                  Keep track of all your job applications with detailed status updates: ongoing,
-                  rejected, dropped-out, or hired.
+                  Conduct therapy sessions with your students through secure video calls with integrated WebRTC technology.
                 </p>
               </CardContent>
             </Card>
@@ -87,10 +85,9 @@ function HomePage() {
                 <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
                   <Building2 className="h-6 w-6 text-primary" />
                 </div>
-                <h3 className="text-xl font-semibold">Company Details</h3>
+                <h3 className="text-xl font-semibold">Interactive Games</h3>
                 <p className="text-muted-foreground">
-                  Store comprehensive company information including salary, benefits, location,
-                  website, and contact details.
+                  Engage students with Phaser-based interactive games synchronized in real-time for turn-based therapy activities.
                 </p>
               </CardContent>
             </Card>
@@ -101,10 +98,9 @@ function HomePage() {
                 <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
                   <MessageSquare className="h-6 w-6 text-primary" />
                 </div>
-                <h3 className="text-xl font-semibold">Interaction History</h3>
+                <h3 className="text-xl font-semibold">Session Recording</h3>
                 <p className="text-muted-foreground">
-                  Record every communication with companies during your hiring process to stay on
-                  top of your conversations.
+                  Track trial data, record behavioral notes, and monitor student progress throughout therapy sessions.
                 </p>
               </CardContent>
             </Card>
@@ -115,10 +111,9 @@ function HomePage() {
                 <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
                   <TrendingUp className="h-6 w-6 text-primary" />
                 </div>
-                <h3 className="text-xl font-semibold">Pipeline Management</h3>
+                <h3 className="text-xl font-semibold">Progress Tracking</h3>
                 <p className="text-muted-foreground">
-                  Visualize your entire hiring pipeline and track progress through multiple
-                  interview stages.
+                  Visualize student progress with charts and metrics to track improvement over time.
                 </p>
               </CardContent>
             </Card>
@@ -129,10 +124,9 @@ function HomePage() {
                 <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
                   <CheckCircle2 className="h-6 w-6 text-primary" />
                 </div>
-                <h3 className="text-xl font-semibold">Status Updates</h3>
+                <h3 className="text-xl font-semibold">Caseload Management</h3>
                 <p className="text-muted-foreground">
-                  Quickly update application statuses and see at a glance where each opportunity
-                  stands.
+                  Manage all your students from a centralized caseload view with quick access to generate session links.
                 </p>
               </CardContent>
             </Card>
@@ -143,10 +137,9 @@ function HomePage() {
                 <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
                   <Briefcase className="h-6 w-6 text-primary" />
                 </div>
-                <h3 className="text-xl font-semibold">Centralized Dashboard</h3>
+                <h3 className="text-xl font-semibold">AI Session Summaries</h3>
                 <p className="text-muted-foreground">
-                  Access all your job applications from a clean, organized dashboard with powerful
-                  search and filtering.
+                  Get AI-generated summaries of therapy sessions to track key achievements and areas for improvement.
                 </p>
               </CardContent>
             </Card>
@@ -159,16 +152,16 @@ function HomePage() {
         <Card className="max-w-3xl mx-auto">
           <CardContent className="text-center space-y-6 p-12">
             <h2 className="text-3xl font-bold">
-              {isAuthenticated ? "Your Dashboard Awaits" : "Ready to Organize Your Job Search?"}
+              {isAuthenticated ? "Your Caseload Awaits" : "Ready to Start Therapy Sessions?"}
             </h2>
             <p className="text-lg text-muted-foreground">
               {isAuthenticated
-                ? "Access your applications and continue tracking your hiring journey."
-                : "Join now and take control of your hiring journey. Start tracking your applications today."}
+                ? "Access your caseload and start generating session links for your students."
+                : "Join now and start delivering virtual speech therapy sessions to your students."}
             </p>
-            <Link to={isAuthenticated ? "/hiring-processes" : "/auth/signup"}>
+            <Link to={isAuthenticated ? "/caseload" : "/auth/signup"}>
               <Button size="lg" className="text-lg">
-                {isAuthenticated ? "Go to Dashboard" : "Create Free Account"}{" "}
+                {isAuthenticated ? "Go to Caseload" : "Create Free Account"}{" "}
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
@@ -179,7 +172,7 @@ function HomePage() {
       {/* Footer */}
       <footer className="container mx-auto px-4 py-8 border-t">
         <div className="text-center text-sm text-muted-foreground">
-          <p>Hiring Tool - Manage your job applications with ease</p>
+          <p>Empat Challenge - Virtual Speech Therapy Platform</p>
         </div>
       </footer>
     </div>

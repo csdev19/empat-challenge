@@ -1,0 +1,841 @@
+---
+title: Session Summary - Video Call Sessions and Data Recording Implementation
+description: Comprehensive implementation plan for Feature 2 (Video Call Sessions) and Feature 4 (Session Data Recording) with game output tracking
+date: 2025-01-27
+tags:
+  - think-process
+  - implementation
+  - video-calls
+  - data-recording
+  - game-tracking
+  - v1
+---
+
+# Session Summary - Video Call Sessions and Data Recording Implementation
+
+## Overview
+
+This document outlines the implementation plan for **Feature 2: Video Call Sessions** and **Feature 4: Session Data Recording** from [Initial Ideas V2](./initial-ideas-v2.mdx). These features enable students to join therapy sessions via generated links, conduct video calls using Daily.co, and record trial data, behavioral notes, and game outputs during sessions.
+
+### Key Features to Implement
+
+**Feature 2: Video Call Sessions**
+- Student session view accessible via link
+- Daily.co video call integration for both participants
+- Session status tracking (scheduled → active → completed)
+- Link validation and session access control
+- Real-time session state management
+
+**Feature 4: Session Data Recording**
+- Real-time trial tracking (correct/incorrect)
+- Automatic percentage calculation
+- Behavioral notes input
+- Game output tracking (results, scores, game state)
+- Data persistence during and after session
+
+### Technologies Used
+
+- **Backend**: Bun + Elysia
+- **Database**: PostgreSQL with Drizzle ORM
+- **Frontend**: React + TanStack Start + TanStack Query
+- **Video Calls**: Daily.co WebRTC SDK
+- **Validation**: Zod v4
+- **Authentication**: better-auth (for SLP), link-based access (for students)
+
+## Database Schemas to Create
+
+### 1. Trial Data Table
+
+**File**: `packages/db/src/schema/trial-data.ts`
+
+Table to store individual trial records during therapy sessions:
+
+- `id` (uuid, primary key)
+- `therapySessionId` (text, foreign key to TherapySession, required)
+- `trialNumber` (integer, required - sequential trial number in session)
+- `isCorrect` (boolean, required - correct/incorrect)
+- `timestamp` (timestamp, required - when trial was recorded)
+- `notes` (text, nullable - optional notes for this specific trial)
+- `createdAt`, `updatedAt`, `deletedAt` (timestamps)
+
+**Indexes**:
+- `trial_data_therapySessionId_idx` on `therapySessionId`
+- `trial_data_timestamp_idx` on `timestamp`
+
+### 2. Session Recording Table
+
+**File**: `packages/db/src/schema/session-recording.ts`
+
+Table to store session-level recording data (behavioral notes, overall metrics):
+
+- `id` (uuid, primary key)
+- `therapySessionId` (text, foreign key to TherapySession, unique - one per session)
+- `behavioralNotes` (text, nullable - SLP's behavioral/subjective notes)
+- `totalTrials` (integer, default 0 - total number of trials recorded)
+- `correctTrials` (integer, default 0 - number of correct trials)
+- `incorrectTrials` (integer, default 0 - number of incorrect trials)
+- `accuracyPercentage` (numeric(5,2), nullable - calculated accuracy)
+- `createdAt`, `updatedAt`, `deletedAt` (timestamps)
+
+**Indexes**:
+- `session_recording_therapySessionId_idx` on `therapySessionId` (unique)
+
+### 3. Game Output Table
+
+**File**: `packages/db/src/schema/game-output.ts`
+
+Table to store game results and outputs from Phaser games played during sessions:
+
+- `id` (uuid, primary key)
+- `therapySessionId` (text, foreign key to TherapySession, required)
+- `gameType` (text, required - e.g., "word-match", "sound-identification", etc.)
+- `gameState` (jsonb, nullable - full game state snapshot)
+- `score` (integer, nullable - final game score)
+- `accuracy` (numeric(5,2), nullable - game-specific accuracy)
+- `duration` (integer, nullable - game duration in seconds)
+- `turnsPlayed` (integer, nullable - number of turns/rounds)
+- `playerResults` (jsonb, nullable - structured results per player)
+  - Example: `{ slp: { score: 10, correct: 8 }, student: { score: 12, correct: 10 } }`
+- `gameEvents` (jsonb, nullable - array of significant game events)
+  - Example: `[{ type: "correct_answer", player: "student", timestamp: "..." }, ...]`
+- `metadata` (jsonb, nullable - additional game-specific metadata)
+- `startedAt` (timestamp, nullable - when game started)
+- `completedAt` (timestamp, nullable - when game ended)
+- `createdAt`, `updatedAt`, `deletedAt` (timestamps)
+
+**Indexes**:
+- `game_output_therapySessionId_idx` on `therapySessionId`
+- `game_output_gameType_idx` on `gameType`
+- `game_output_completedAt_idx` on `completedAt`
+
+**Note**: Using JSONB for flexible game state storage allows different game types to store their specific data structures without schema changes.
+
+### 4. Game Output Event Table (Optional - for detailed event tracking)
+
+**File**: `packages/db/src/schema/game-output-event.ts`
+
+Optional table for granular game event tracking (if needed for analytics):
+
+- `id` (uuid, primary key)
+- `gameOutputId` (text, foreign key to GameOutput, required)
+- `eventType` (text, required - e.g., "correct_answer", "incorrect_answer", "turn_complete")
+- `player` (text, required - "slp" or "student")
+- `eventData` (jsonb, nullable - event-specific data)
+- `timestamp` (timestamp, required - when event occurred)
+- `createdAt` (timestamp)
+
+**Indexes**:
+- `game_output_event_gameOutputId_idx` on `gameOutputId`
+- `game_output_event_timestamp_idx` on `timestamp`
+
+## Domain Schemas to Create
+
+### 1. Trial Data Schemas
+
+**File**: `packages/domain/src/schemas/trial-data.ts`
+
+- `trialDataBaseSchema` - Full trial data model
+- `createTrialDataSchema` - Schema for creating new trial records
+- `updateTrialDataSchema` - Schema for updating trial records
+- `trialDataBatchSchema` - Schema for batch trial creation (multiple trials at once)
+- Type exports: `TrialDataBase`, `CreateTrialData`, `UpdateTrialData`, `TrialDataBatch`
+
+### 2. Session Recording Schemas
+
+**File**: `packages/domain/src/schemas/session-recording.ts`
+
+- `sessionRecordingBaseSchema` - Full session recording model
+- `createSessionRecordingSchema` - Schema for creating session recording
+- `updateSessionRecordingSchema` - Schema for updating behavioral notes and metrics
+- `sessionRecordingWithTrialsSchema` - Schema including trial data (for responses)
+- Type exports: `SessionRecordingBase`, `CreateSessionRecording`, `UpdateSessionRecording`, `SessionRecordingWithTrials`
+
+### 3. Game Output Schemas
+
+**File**: `packages/domain/src/schemas/game-output.ts`
+
+- `gameOutputBaseSchema` - Full game output model
+- `createGameOutputSchema` - Schema for creating game output record
+- `updateGameOutputSchema` - Schema for updating game output (e.g., final score)
+- `gameOutputPlayerResultsSchema` - Schema for player results structure
+- `gameOutputEventSchema` - Schema for individual game events
+- Type exports: `GameOutputBase`, `CreateGameOutput`, `UpdateGameOutput`, `GameOutputPlayerResults`, `GameOutputEvent`
+
+### 4. Session Link Validation Schemas
+
+**File**: `packages/domain/src/schemas/session-link.ts`
+
+- `validateSessionLinkSchema` - Schema for link token validation
+- `sessionLinkValidationResponseSchema` - Response schema with session details
+- Type exports: `ValidateSessionLink`, `SessionLinkValidationResponse`
+
+## Backend Implementation
+
+### 1. Session Link Validation Route
+
+**File**: `apps/server/src/routes/session-link.ts`
+
+Endpoint for validating session links and retrieving session details:
+
+- `GET /api/v1/session-link/validate/:linkToken` - Validate link and return session info
+  - Input: `linkToken` (path parameter)
+  - Process:
+    1. Look up therapy session by `linkToken`
+    2. Verify link is not expired (`expiresAt` check)
+    3. Verify session status allows joining (scheduled or active)
+    4. Return session details including:
+       - `sessionId`
+       - `studentId`, `studentName`
+       - `slpId`, `slpName`
+       - `dailyRoomUrl`
+       - `studentToken` (Daily.co token for student)
+       - `status`
+       - `expiresAt`
+  - Response: `SessionLinkValidationResponse`
+  - Authorization: None (public endpoint, validated via linkToken)
+
+### 2. Therapy Session Status Updates
+
+**File**: `apps/server/src/routes/therapy-sessions.ts` (extend existing)
+
+Additional endpoints for session management:
+
+- `POST /api/v1/therapy-sessions/:id/start` - Mark session as active
+  - Input: `sessionId` (path parameter)
+  - Process:
+    1. Verify session exists and belongs to authenticated SLP
+    2. Update status to "active"
+    3. Set `startTime` to current timestamp
+    4. Return updated session
+  - Authorization: SLP only
+
+- `POST /api/v1/therapy-sessions/:id/end` - Mark session as completed
+  - Input: `sessionId` (path parameter), optional `duration` (body)
+  - Process:
+    1. Verify session exists and belongs to authenticated SLP
+    2. Update status to "completed"
+    3. Set `endTime` to current timestamp
+    4. Calculate and set `duration` if provided
+    5. Return updated session
+  - Authorization: SLP only
+
+- `GET /api/v1/therapy-sessions/:id/join-info` - Get join information for student
+  - Input: `sessionId` (path parameter)
+  - Process:
+    1. Look up session by ID
+    2. Return Daily.co room URL and student token
+    3. No authentication required (for student access via link)
+  - Authorization: Public (validated via session link flow)
+
+### 3. Trial Data Routes
+
+**File**: `apps/server/src/routes/trial-data.ts`
+
+Endpoints for recording trial data:
+
+- `POST /api/v1/trial-data` - Create single trial record
+  - Input: `CreateTrialData` (therapySessionId, isCorrect, notes?)
+  - Process:
+    1. Verify session exists and belongs to authenticated SLP
+    2. Verify session is active
+    3. Get current trial count for session
+    4. Create trial record with `trialNumber`
+    5. Update session recording metrics (increment totals, recalculate accuracy)
+    6. Return created trial
+  - Authorization: SLP only
+
+- `POST /api/v1/trial-data/batch` - Create multiple trial records at once
+  - Input: `TrialDataBatch` (therapySessionId, trials: [{ isCorrect, notes?, timestamp? }])
+  - Process:
+    1. Verify session exists and belongs to authenticated SLP
+    2. Verify session is active
+    3. Get current trial count
+    4. Create all trial records with sequential trial numbers
+    5. Update session recording metrics
+    6. Return created trials
+  - Authorization: SLP only
+
+- `GET /api/v1/trial-data` - List trials for a session
+  - Query params: `therapySessionId` (required)
+  - Process:
+    1. Verify session belongs to authenticated SLP
+    2. Return all trials for session, ordered by trialNumber
+  - Authorization: SLP only
+
+### 4. Session Recording Routes
+
+**File**: `apps/server/src/routes/session-recording.ts`
+
+Endpoints for session-level recording data:
+
+- `GET /api/v1/session-recording/:therapySessionId` - Get session recording with trials
+  - Input: `therapySessionId` (path parameter)
+  - Process:
+    1. Verify session belongs to authenticated SLP
+    2. Get or create session recording
+    3. Get all trials for session
+    4. Return recording with trials
+  - Response: `SessionRecordingWithTrials`
+  - Authorization: SLP only
+
+- `PUT /api/v1/session-recording/:therapySessionId` - Update behavioral notes
+  - Input: `therapySessionId` (path parameter), `UpdateSessionRecording` (behavioralNotes)
+  - Process:
+    1. Verify session belongs to authenticated SLP
+    2. Update behavioral notes
+    3. Return updated recording
+  - Authorization: SLP only
+
+- `POST /api/v1/session-recording/:therapySessionId/recalculate` - Recalculate metrics
+  - Input: `therapySessionId` (path parameter)
+  - Process:
+    1. Verify session belongs to authenticated SLP
+    2. Count all trials for session
+    3. Calculate accuracy percentage
+    4. Update session recording metrics
+    5. Return updated recording
+  - Authorization: SLP only
+
+### 5. Game Output Routes
+
+**File**: `apps/server/src/routes/game-output.ts`
+
+Endpoints for recording game outputs:
+
+- `POST /api/v1/game-output` - Create game output record
+  - Input: `CreateGameOutput` (therapySessionId, gameType, gameState?, score?, etc.)
+  - Process:
+    1. Verify session exists and belongs to authenticated SLP
+    2. Verify session is active
+    3. Create game output record
+    4. Return created record
+  - Authorization: SLP only
+
+- `PUT /api/v1/game-output/:id` - Update game output (e.g., final score)
+  - Input: `gameOutputId` (path parameter), `UpdateGameOutput`
+  - Process:
+    1. Verify game output belongs to session owned by authenticated SLP
+    2. Update game output fields
+    3. Return updated record
+  - Authorization: SLP only
+
+- `GET /api/v1/game-output` - List game outputs for a session
+  - Query params: `therapySessionId` (required)
+  - Process:
+    1. Verify session belongs to authenticated SLP
+    2. Return all game outputs for session, ordered by createdAt
+  - Authorization: SLP only
+
+- `GET /api/v1/game-output/:id` - Get single game output with full details
+  - Input: `gameOutputId` (path parameter)
+  - Process:
+    1. Verify game output belongs to session owned by authenticated SLP
+    2. Return game output with full gameState and events
+  - Authorization: SLP only
+
+### 6. Daily.co Integration Updates
+
+**File**: `apps/server/src/utils/daily-client.ts` (extend existing)
+
+Additional utility functions:
+
+- `validateRoomAccess(roomName, token)` - Validate if token can access room
+- `getRoomParticipants(roomName)` - Get current participants in room
+- `endRoom(roomName)` - End/delete Daily.co room (for cleanup)
+
+## Frontend Implementation
+
+### 1. Session Link Validation Hook
+
+**File**: `apps/web/src/hooks/use-session-link.ts`
+
+React Query hooks for session link validation:
+
+- `useValidateSessionLink(linkToken)` - Query hook for validating link
+  - Returns: Session details if valid, error if invalid/expired
+  - Used by student view to validate link before joining
+
+### 2. Trial Data Hooks
+
+**File**: `apps/web/src/hooks/use-trial-data.ts`
+
+React Query hooks for trial data:
+
+- `useTrials(therapySessionId)` - Query hook for listing trials
+- `useCreateTrial()` - Mutation for creating single trial
+- `useCreateTrialBatch()` - Mutation for batch trial creation
+- `useTrialStats(therapySessionId)` - Query hook for trial statistics (derived from trials)
+
+### 3. Session Recording Hooks
+
+**File**: `apps/web/src/hooks/use-session-recording.ts`
+
+React Query hooks for session recording:
+
+- `useSessionRecording(therapySessionId)` - Query hook for session recording
+- `useUpdateSessionRecording()` - Mutation for updating behavioral notes
+- `useRecalculateSessionMetrics()` - Mutation for recalculating metrics
+
+### 4. Game Output Hooks
+
+**File**: `apps/web/src/hooks/use-game-output.ts`
+
+React Query hooks for game outputs:
+
+- `useGameOutputs(therapySessionId)` - Query hook for listing game outputs
+- `useGameOutput(id)` - Query hook for single game output
+- `useCreateGameOutput()` - Mutation for creating game output
+- `useUpdateGameOutput()` - Mutation for updating game output
+
+### 5. Student Session View Component
+
+**File**: `apps/web/src/components/session/student-session-view.tsx`
+
+Main component for student joining and participating in session:
+
+- Link validation on mount
+- Daily.co video call integration
+- Loading states (validating link, joining call)
+- Error states (invalid link, expired link, connection errors)
+- Session info display (SLP name, session status)
+
+### 6. SLP Session View Component
+
+**File**: `apps/web/src/components/session/slp-session-view.tsx`
+
+Main component for SLP conducting session:
+
+- Daily.co video call integration (with owner controls)
+- Trial tracking UI (correct/incorrect buttons)
+- Behavioral notes input
+- Game initiation controls
+- Session status management (start/end buttons)
+- Real-time metrics display (accuracy, trial count)
+
+### 7. Trial Tracking Component
+
+**File**: `apps/web/src/components/session/trial-tracking.tsx`
+
+Component for recording trials during session:
+
+- "Correct" and "Incorrect" buttons
+- Current trial number display
+- Running accuracy percentage
+- Optional notes input per trial
+- Batch trial recording support
+- Visual feedback on trial submission
+
+### 8. Behavioral Notes Component
+
+**File**: `apps/web/src/components/session/behavioral-notes.tsx`
+
+Component for session-level behavioral notes:
+
+- Textarea for notes input
+- Auto-save functionality (debounced)
+- Character count
+- Notes preview/display
+
+### 9. Game Output Tracker Component
+
+**File**: `apps/web/src/components/session/game-output-tracker.tsx`
+
+Component for tracking and displaying game outputs:
+
+- Game output list for current session
+- Game result cards (score, accuracy, duration)
+- Game state visualization (if applicable)
+- Integration with Phaser game for output capture
+- Real-time updates as games complete
+
+### 10. Session Metrics Display Component
+
+**File**: `apps/web/src/components/session/session-metrics.tsx`
+
+Component for displaying real-time session metrics:
+
+- Total trials count
+- Correct/incorrect breakdown
+- Accuracy percentage (with visual indicator)
+- Game outputs summary
+- Session duration
+
+### 11. Student Session Route
+
+**File**: `apps/web/src/routes/session/[linkToken].tsx`
+
+Public route for students to join sessions:
+
+- Extracts `linkToken` from URL
+- Validates link on mount
+- Renders `StudentSessionView` component
+- Handles invalid/expired link errors
+- Redirects to error page if link invalid
+
+### 12. SLP Session Route
+
+**File**: `apps/web/src/routes/_authenticated/session/[sessionId].tsx`
+
+Protected route for SLP to conduct sessions:
+
+- Extracts `sessionId` from URL
+- Verifies session belongs to authenticated SLP
+- Renders `SLPSessionView` component
+- Handles session not found errors
+
+## Daily.co Integration Details
+
+### Student Join Flow
+
+1. Student clicks session link
+2. Frontend validates link via `/api/v1/session-link/validate/:linkToken`
+3. If valid, frontend receives `dailyRoomUrl` and `studentToken`
+4. Frontend initializes Daily.co iframe with room URL and token
+5. Student joins video call
+6. Session status can be updated to "active" (if not already)
+
+### SLP Join Flow
+
+1. SLP navigates to session view from caseload
+2. Frontend loads session details (already has `slpToken` from link generation)
+3. Frontend initializes Daily.co iframe with room URL and SLP token
+4. SLP joins video call with owner controls
+5. SLP can start session (updates status to "active")
+
+### Session Status Management
+
+- **scheduled** → **active**: When first participant joins or SLP clicks "Start Session"
+- **active** → **completed**: When SLP clicks "End Session" or both participants leave
+- **active** → **cancelled**: If SLP cancels before completion
+
+### Daily.co SDK Integration
+
+**Frontend Daily.co Setup**:
+
+```typescript
+// Install: @daily-co/daily-js
+import DailyIframe from '@daily-co/daily-js';
+
+// Create call frame
+const callFrame = DailyIframe.createFrame(videoContainer, {
+  url: dailyRoomUrl,
+  token: meetingToken,
+  showLeaveButton: true,
+  iframeStyle: {
+    width: '100%',
+    height: '100%',
+  },
+});
+
+// Join call
+await callFrame.join();
+
+// Listen for events
+callFrame.on('joined-meeting', () => {
+  // Update session status to active
+});
+
+callFrame.on('left-meeting', () => {
+  // Update session status if needed
+});
+```
+
+## Game Output Tracking Structure
+
+### Game Output Data Model
+
+Games will output structured data that gets stored in the `game-output` table:
+
+```typescript
+interface GameOutput {
+  gameType: string; // e.g., "word-match", "sound-identification"
+  score?: number;
+  accuracy?: number; // 0-100
+  duration?: number; // seconds
+  turnsPlayed?: number;
+  playerResults?: {
+    slp: { score: number; correct: number; incorrect: number };
+    student: { score: number; correct: number; incorrect: number };
+  };
+  gameEvents?: Array<{
+    type: string; // "correct_answer", "incorrect_answer", "turn_complete", etc.
+    player: "slp" | "student";
+    timestamp: string;
+    data?: Record<string, unknown>;
+  }>;
+  gameState?: {
+    // Game-specific state structure
+    // Examples:
+    // - currentLevel: number
+    // - wordsCompleted: string[]
+    // - timeRemaining: number
+    // - etc.
+  };
+  metadata?: {
+    // Additional game-specific metadata
+    // Examples:
+    // - difficulty: "easy" | "medium" | "hard"
+    // - gameMode: "practice" | "assessment"
+    // - etc.
+  };
+}
+```
+
+### Game Integration Pattern
+
+Games (Phaser.js) will integrate with the tracking system:
+
+1. **Game Initialization**: Game receives `therapySessionId` and `gameType`
+2. **During Gameplay**: Game emits events to parent component
+3. **Game Completion**: Game calls `onGameComplete(outputData)` callback
+4. **Parent Component**: Captures output and calls `useCreateGameOutput()` mutation
+5. **Backend**: Stores game output in database
+
+**Example Game Integration**:
+
+```typescript
+// In Phaser game component
+function GameComponent({ therapySessionId, onGameComplete }) {
+  const createGameOutput = useCreateGameOutput();
+  
+  const handleGameEnd = (gameData) => {
+    const output = {
+      therapySessionId,
+      gameType: "word-match",
+      score: gameData.score,
+      accuracy: gameData.accuracy,
+      duration: gameData.duration,
+      playerResults: {
+        slp: gameData.slpResults,
+        student: gameData.studentResults,
+      },
+      gameEvents: gameData.events,
+      gameState: gameData.state,
+    };
+    
+    createGameOutput.mutate(output);
+    onGameComplete?.(output);
+  };
+  
+  // ... Phaser game setup
+}
+```
+
+## Implementation Flow
+
+### Feature 2: Video Call Sessions Flow
+
+1. **Student receives link** (from SLP via email/SMS/etc.)
+2. **Student clicks link** → Navigates to `/session/[linkToken]`
+3. **Frontend validates link** → Calls `GET /api/v1/session-link/validate/:linkToken`
+4. **Backend validates** → Checks expiration, status, returns session details
+5. **Frontend initializes Daily.co** → Creates iframe with room URL and token
+6. **Student joins call** → Daily.co WebRTC connection established
+7. **Session status updates** → Backend updates to "active" when first participant joins
+8. **Video call active** → Both participants can see/hear each other
+9. **Session ends** → SLP ends session, status updates to "completed"
+
+### Feature 4: Session Data Recording Flow
+
+1. **Session is active** → SLP and student in video call
+2. **SLP records trials** → Clicks "Correct" or "Incorrect" buttons
+3. **Frontend sends trial** → `POST /api/v1/trial-data` with `isCorrect`
+4. **Backend records trial** → Creates trial record, updates session recording metrics
+5. **Frontend updates UI** → Shows updated trial count and accuracy
+6. **SLP adds notes** → Types behavioral notes in textarea
+7. **Frontend auto-saves** → Debounced `PUT /api/v1/session-recording/:id` call
+8. **Game completes** → Phaser game calls `onGameComplete()` with output data
+9. **Frontend records game** → `POST /api/v1/game-output` with game results
+10. **Session ends** → All data persisted, ready for progress tracking
+
+## Files to Create
+
+### Database Layer
+
+| File Path | Description |
+|-----------|-------------|
+| `packages/db/src/schema/trial-data.ts` | Trial data table schema |
+| `packages/db/src/schema/session-recording.ts` | Session recording table schema |
+| `packages/db/src/schema/game-output.ts` | Game output table schema |
+| `packages/db/src/schema/game-output-event.ts` | Game output event table schema (optional) |
+
+### Domain Layer
+
+| File Path | Description |
+|-----------|-------------|
+| `packages/domain/src/schemas/trial-data.ts` | Trial data Zod schemas |
+| `packages/domain/src/schemas/session-recording.ts` | Session recording Zod schemas |
+| `packages/domain/src/schemas/game-output.ts` | Game output Zod schemas |
+| `packages/domain/src/schemas/session-link.ts` | Session link validation schemas |
+
+### Backend
+
+| File Path | Description |
+|-----------|-------------|
+| `apps/server/src/routes/session-link.ts` | Session link validation routes |
+| `apps/server/src/routes/trial-data.ts` | Trial data API routes |
+| `apps/server/src/routes/session-recording.ts` | Session recording API routes |
+| `apps/server/src/routes/game-output.ts` | Game output API routes |
+
+### Frontend
+
+| File Path | Description |
+|-----------|-------------|
+| `apps/web/src/hooks/use-session-link.ts` | Session link validation hooks |
+| `apps/web/src/hooks/use-trial-data.ts` | Trial data React Query hooks |
+| `apps/web/src/hooks/use-session-recording.ts` | Session recording hooks |
+| `apps/web/src/hooks/use-game-output.ts` | Game output hooks |
+| `apps/web/src/components/session/student-session-view.tsx` | Student session view component |
+| `apps/web/src/components/session/slp-session-view.tsx` | SLP session view component |
+| `apps/web/src/components/session/trial-tracking.tsx` | Trial tracking component |
+| `apps/web/src/components/session/behavioral-notes.tsx` | Behavioral notes component |
+| `apps/web/src/components/session/game-output-tracker.tsx` | Game output tracker component |
+| `apps/web/src/components/session/session-metrics.tsx` | Session metrics display component |
+| `apps/web/src/routes/session/[linkToken].tsx` | Student session route (public) |
+| `apps/web/src/routes/_authenticated/session/[sessionId].tsx` | SLP session route (protected) |
+
+## Files to Modify
+
+### Database Layer
+
+| File Path | Changes |
+|-----------|---------|
+| `packages/db/src/schema/index.ts` | Add exports for new schemas |
+| `packages/db/src/schema/therapy-session.ts` | Add relations to new tables (optional) |
+
+### Domain Layer
+
+| File Path | Changes |
+|-----------|---------|
+| `packages/domain/src/schemas/index.ts` | Add exports for new schemas |
+
+### Backend
+
+| File Path | Changes |
+|-----------|---------|
+| `apps/server/src/routes/therapy-sessions.ts` | Add start/end session endpoints, join-info endpoint |
+| `apps/server/src/index.ts` | Register new route modules |
+| `apps/server/src/utils/daily-client.ts` | Add room validation and management utilities |
+
+### Frontend
+
+| File Path | Changes |
+|-----------|---------|
+| `apps/web/src/routes/__root.tsx` | Add route definitions for session routes |
+| `apps/web/src/components/header.tsx` | Add navigation to active sessions (optional) |
+
+## Environment Variables
+
+No new environment variables required (uses existing `DAILY_API_KEY`).
+
+## Dependencies to Add
+
+### Frontend
+
+```json
+{
+  "@daily-co/daily-js": "^0.0.0" // Check latest version
+}
+```
+
+Install with:
+```bash
+bun add @daily-co/daily-js
+```
+
+## Next Steps
+
+### Immediate Actions Required
+
+1. **Database Migrations**
+   - Create new table schemas
+   - Run Drizzle migrations:
+     ```bash
+     bun run --filter=@empat-challenge/db db:generate
+     bun run --filter=@empat-challenge/db db:push
+     ```
+
+2. **Backend Implementation**
+   - Implement session link validation endpoint
+   - Implement trial data routes
+   - Implement session recording routes
+   - Implement game output routes
+   - Extend therapy session routes with start/end endpoints
+
+3. **Frontend Implementation**
+   - Build student session view with Daily.co integration
+   - Build SLP session view with trial tracking
+   - Implement game output tracking components
+   - Create session routes
+
+4. **Testing**
+   - Test link validation flow
+   - Test Daily.co video call integration
+   - Test trial recording
+   - Test game output tracking
+   - Test session status transitions
+
+### Future Features to Implement
+
+Based on [Initial Ideas V2](./initial-ideas-v2.mdx), the following features are next:
+
+1. **Interactive Phaser Game** (Feature 3)
+   - Game implementation
+   - WebSocket synchronization
+   - Integration with game output tracking
+
+2. **Student Profile with Progress** (Feature 5)
+   - Progress visualization using trial data and game outputs
+   - Charts showing accuracy trends
+   - Game performance metrics
+
+3. **AI Session Summary** (Feature 7)
+   - Use trial data and game outputs for summary generation
+   - Include game performance in summaries
+
+## Technical Decisions
+
+### Why Separate Trial Data and Session Recording Tables
+
+- **Trial Data**: Granular, individual trial records for detailed analysis
+- **Session Recording**: Aggregated metrics and session-level notes for quick access
+- Allows for flexible querying (detailed trials vs. summary metrics)
+- Enables recalculation of metrics without losing individual trial data
+
+### Why JSONB for Game Output
+
+- Different game types will have different data structures
+- Allows flexibility without schema migrations for each new game
+- PostgreSQL JSONB provides good query performance
+- Can still index specific JSONB fields if needed
+
+### Why Link-Based Student Access
+
+- No authentication complexity for students
+- Simple sharing mechanism (email, SMS, messaging apps)
+- Link validation provides security (expiration, single-use if needed)
+- Faster implementation than full student authentication system
+
+### Why Real-Time Trial Tracking
+
+- SLP can see immediate feedback (accuracy updates)
+- Better UX during active sessions
+- Data is saved incrementally (no data loss if session ends unexpectedly)
+- Enables real-time progress visualization
+
+## Code Quality Notes
+
+- All schemas follow existing pattern (base schema with derived create/update)
+- All routes use consistent error handling and response helpers
+- All hooks follow TanStack Query patterns
+- Components use shadcn/ui for consistent styling
+- Type safety maintained throughout with Zod validation
+- Authorization checks ensure SLP can only access their own data
+- Game output structure is flexible but well-typed
+
+## References
+
+- [Session Link Generation Implementation](./session-summary-session-link-generation.mdx) - Feature 1 implementation
+- [Initial Ideas V2](./initial-ideas-v2.mdx) - Architecture and feature definitions
+- [Daily.co JavaScript SDK Documentation](https://docs.daily.co/reference/daily-js) - Frontend SDK reference
+- [Daily.co REST API Documentation](https://docs.daily.co/reference/rest-api) - Backend API reference

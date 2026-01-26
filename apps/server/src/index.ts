@@ -1,9 +1,14 @@
 import { cors } from "@elysiajs/cors";
 import { createAuth } from "@empat-challenge/auth";
 import { Elysia } from "elysia";
-import { hiringProcessRoutes } from "./routes/hiring-processes";
-import { companyDetailsRoutes } from "./routes/company-details";
-import { interactionRoutes } from "./routes/interactions";
+import { studentRoutes } from "./routes/students";
+import { caseloadRoutes } from "./routes/caseload";
+import { slpRoutes } from "./routes/slp";
+import { therapySessionRoutes } from "./routes/therapy-sessions";
+import { sessionLinkRoutes } from "./routes/session-link";
+import { trialDataRoutes } from "./routes/trial-data";
+import { sessionRecordingRoutes } from "./routes/session-recording";
+import { gameOutputRoutes } from "./routes/game-output";
 import { getEnv } from "./utils/env";
 
 const env = getEnv();
@@ -23,9 +28,14 @@ const apiRoutes = new Elysia({
   prefix: "/api/v1",
 })
   .use(cors(corsConfig))
-  .use(hiringProcessRoutes)
-  .use(companyDetailsRoutes)
-  .use(interactionRoutes)
+  .use(slpRoutes)
+  .use(studentRoutes)
+  .use(caseloadRoutes)
+  .use(therapySessionRoutes)
+  .use(sessionLinkRoutes)
+  .use(trialDataRoutes)
+  .use(sessionRecordingRoutes)
+  .use(gameOutputRoutes)
   .get("/health", () => ({
     status: "healthy",
     timestamp: new Date().toISOString(),

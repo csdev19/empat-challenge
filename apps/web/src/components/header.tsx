@@ -12,14 +12,14 @@ export default function Header() {
       <div className="flex flex-row items-center justify-between px-4 py-2">
         <nav className="flex items-center gap-4 text-lg">
           <Link to="/" className="font-semibold">
-            Hiring Tool
+            Empat Challenge
           </Link>
           {isAuthenticated && (
             <Link
-              to="/hiring-processes"
+              to="/caseload"
               className="text-muted-foreground hover:text-foreground transition-colors"
             >
-              Dashboard
+              Caseload
             </Link>
           )}
         </nav>

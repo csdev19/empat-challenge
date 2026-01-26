@@ -11,12 +11,11 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SessionLinkTokenRouteImport } from './routes/session/$linkToken'
 import { Route as AuthSignupRouteImport } from './routes/auth/signup'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
-import { Route as AuthenticatedHiringProcessesIndexRouteImport } from './routes/_authenticated/hiring-processes/index'
-import { Route as AuthenticatedHiringProcessesNewRouteImport } from './routes/_authenticated/hiring-processes/new'
-import { Route as AuthenticatedHiringProcessesIdRouteImport } from './routes/_authenticated/hiring-processes/$id'
-import { Route as AuthenticatedHiringProcessesIdEditRouteImport } from './routes/_authenticated/hiring-processes/$id_.edit'
+import { Route as AuthenticatedCaseloadIndexRouteImport } from './routes/_authenticated/caseload/index'
+import { Route as AuthenticatedSessionSessionIdRouteImport } from './routes/_authenticated/session/$sessionId'
 
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
@@ -25,6 +24,11 @@ const AuthenticatedRoute = AuthenticatedRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SessionLinkTokenRoute = SessionLinkTokenRouteImport.update({
+  id: '/session/$linkToken',
+  path: '/session/$linkToken',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthSignupRoute = AuthSignupRouteImport.update({
@@ -37,28 +41,16 @@ const AuthLoginRoute = AuthLoginRouteImport.update({
   path: '/auth/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedHiringProcessesIndexRoute =
-  AuthenticatedHiringProcessesIndexRouteImport.update({
-    id: '/hiring-processes/',
-    path: '/hiring-processes/',
+const AuthenticatedCaseloadIndexRoute =
+  AuthenticatedCaseloadIndexRouteImport.update({
+    id: '/caseload/',
+    path: '/caseload/',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedHiringProcessesNewRoute =
-  AuthenticatedHiringProcessesNewRouteImport.update({
-    id: '/hiring-processes/new',
-    path: '/hiring-processes/new',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
-const AuthenticatedHiringProcessesIdRoute =
-  AuthenticatedHiringProcessesIdRouteImport.update({
-    id: '/hiring-processes/$id',
-    path: '/hiring-processes/$id',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
-const AuthenticatedHiringProcessesIdEditRoute =
-  AuthenticatedHiringProcessesIdEditRouteImport.update({
-    id: '/hiring-processes/$id_/edit',
-    path: '/hiring-processes/$id/edit',
+const AuthenticatedSessionSessionIdRoute =
+  AuthenticatedSessionSessionIdRouteImport.update({
+    id: '/session/$sessionId',
+    path: '/session/$sessionId',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 
@@ -66,19 +58,17 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
-  '/hiring-processes/$id': typeof AuthenticatedHiringProcessesIdRoute
-  '/hiring-processes/new': typeof AuthenticatedHiringProcessesNewRoute
-  '/hiring-processes': typeof AuthenticatedHiringProcessesIndexRoute
-  '/hiring-processes/$id/edit': typeof AuthenticatedHiringProcessesIdEditRoute
+  '/session/$linkToken': typeof SessionLinkTokenRoute
+  '/session/$sessionId': typeof AuthenticatedSessionSessionIdRoute
+  '/caseload': typeof AuthenticatedCaseloadIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
-  '/hiring-processes/$id': typeof AuthenticatedHiringProcessesIdRoute
-  '/hiring-processes/new': typeof AuthenticatedHiringProcessesNewRoute
-  '/hiring-processes': typeof AuthenticatedHiringProcessesIndexRoute
-  '/hiring-processes/$id/edit': typeof AuthenticatedHiringProcessesIdEditRoute
+  '/session/$linkToken': typeof SessionLinkTokenRoute
+  '/session/$sessionId': typeof AuthenticatedSessionSessionIdRoute
+  '/caseload': typeof AuthenticatedCaseloadIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -86,10 +76,9 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
-  '/_authenticated/hiring-processes/$id': typeof AuthenticatedHiringProcessesIdRoute
-  '/_authenticated/hiring-processes/new': typeof AuthenticatedHiringProcessesNewRoute
-  '/_authenticated/hiring-processes/': typeof AuthenticatedHiringProcessesIndexRoute
-  '/_authenticated/hiring-processes/$id_/edit': typeof AuthenticatedHiringProcessesIdEditRoute
+  '/session/$linkToken': typeof SessionLinkTokenRoute
+  '/_authenticated/session/$sessionId': typeof AuthenticatedSessionSessionIdRoute
+  '/_authenticated/caseload/': typeof AuthenticatedCaseloadIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -97,29 +86,26 @@ export interface FileRouteTypes {
     | '/'
     | '/auth/login'
     | '/auth/signup'
-    | '/hiring-processes/$id'
-    | '/hiring-processes/new'
-    | '/hiring-processes'
-    | '/hiring-processes/$id/edit'
+    | '/session/$linkToken'
+    | '/session/$sessionId'
+    | '/caseload'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth/login'
     | '/auth/signup'
-    | '/hiring-processes/$id'
-    | '/hiring-processes/new'
-    | '/hiring-processes'
-    | '/hiring-processes/$id/edit'
+    | '/session/$linkToken'
+    | '/session/$sessionId'
+    | '/caseload'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth/login'
     | '/auth/signup'
-    | '/_authenticated/hiring-processes/$id'
-    | '/_authenticated/hiring-processes/new'
-    | '/_authenticated/hiring-processes/'
-    | '/_authenticated/hiring-processes/$id_/edit'
+    | '/session/$linkToken'
+    | '/_authenticated/session/$sessionId'
+    | '/_authenticated/caseload/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -127,6 +113,7 @@ export interface RootRouteChildren {
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   AuthLoginRoute: typeof AuthLoginRoute
   AuthSignupRoute: typeof AuthSignupRoute
+  SessionLinkTokenRoute: typeof SessionLinkTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -145,6 +132,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/session/$linkToken': {
+      id: '/session/$linkToken'
+      path: '/session/$linkToken'
+      fullPath: '/session/$linkToken'
+      preLoaderRoute: typeof SessionLinkTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth/signup': {
       id: '/auth/signup'
       path: '/auth/signup'
@@ -159,51 +153,31 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/hiring-processes/': {
-      id: '/_authenticated/hiring-processes/'
-      path: '/hiring-processes'
-      fullPath: '/hiring-processes'
-      preLoaderRoute: typeof AuthenticatedHiringProcessesIndexRouteImport
+    '/_authenticated/caseload/': {
+      id: '/_authenticated/caseload/'
+      path: '/caseload'
+      fullPath: '/caseload'
+      preLoaderRoute: typeof AuthenticatedCaseloadIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/hiring-processes/new': {
-      id: '/_authenticated/hiring-processes/new'
-      path: '/hiring-processes/new'
-      fullPath: '/hiring-processes/new'
-      preLoaderRoute: typeof AuthenticatedHiringProcessesNewRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/hiring-processes/$id': {
-      id: '/_authenticated/hiring-processes/$id'
-      path: '/hiring-processes/$id'
-      fullPath: '/hiring-processes/$id'
-      preLoaderRoute: typeof AuthenticatedHiringProcessesIdRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/hiring-processes/$id_/edit': {
-      id: '/_authenticated/hiring-processes/$id_/edit'
-      path: '/hiring-processes/$id/edit'
-      fullPath: '/hiring-processes/$id/edit'
-      preLoaderRoute: typeof AuthenticatedHiringProcessesIdEditRouteImport
+    '/_authenticated/session/$sessionId': {
+      id: '/_authenticated/session/$sessionId'
+      path: '/session/$sessionId'
+      fullPath: '/session/$sessionId'
+      preLoaderRoute: typeof AuthenticatedSessionSessionIdRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
   }
 }
 
 interface AuthenticatedRouteChildren {
-  AuthenticatedHiringProcessesIdRoute: typeof AuthenticatedHiringProcessesIdRoute
-  AuthenticatedHiringProcessesNewRoute: typeof AuthenticatedHiringProcessesNewRoute
-  AuthenticatedHiringProcessesIndexRoute: typeof AuthenticatedHiringProcessesIndexRoute
-  AuthenticatedHiringProcessesIdEditRoute: typeof AuthenticatedHiringProcessesIdEditRoute
+  AuthenticatedSessionSessionIdRoute: typeof AuthenticatedSessionSessionIdRoute
+  AuthenticatedCaseloadIndexRoute: typeof AuthenticatedCaseloadIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
-  AuthenticatedHiringProcessesIdRoute: AuthenticatedHiringProcessesIdRoute,
-  AuthenticatedHiringProcessesNewRoute: AuthenticatedHiringProcessesNewRoute,
-  AuthenticatedHiringProcessesIndexRoute:
-    AuthenticatedHiringProcessesIndexRoute,
-  AuthenticatedHiringProcessesIdEditRoute:
-    AuthenticatedHiringProcessesIdEditRoute,
+  AuthenticatedSessionSessionIdRoute: AuthenticatedSessionSessionIdRoute,
+  AuthenticatedCaseloadIndexRoute: AuthenticatedCaseloadIndexRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
@@ -215,6 +189,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   AuthLoginRoute: AuthLoginRoute,
   AuthSignupRoute: AuthSignupRoute,
+  SessionLinkTokenRoute: SessionLinkTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

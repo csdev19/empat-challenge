@@ -25,7 +25,7 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
         content: "width=device-width, initial-scale=1",
       },
       {
-        title: "Hiring Tool",
+        title: "Empat Challenge",
       },
     ],
     links: [
@@ -65,7 +65,7 @@ function RootDocument() {
       <body suppressHydrationWarning>
         {!isReady && (
           <div className="fixed inset-0 z-9999 flex items-center justify-center bg-neutral-950">
-            <h1 className="text-2xl font-semibold tracking-tight">Hiring Tool</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">Empat Challenge</h1>
           </div>
         )}
 

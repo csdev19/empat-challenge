@@ -1,15 +1,18 @@
 import { useForm } from "@tanstack/react-form";
 import { useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import z from "zod";
 
 import { authClient } from "@/lib/auth-client";
+import { sessionKeys } from "@/hooks/use-session";
 
 import Loader from "./loader";
 import { Button, Input, Label } from "@empat-challenge/web-ui";
 
 export default function SignUpForm() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { isPending } = authClient.useSession();
 
   const form = useForm({
@@ -26,11 +29,26 @@ export default function SignUpForm() {
           name: value.name,
         },
         {
-          onSuccess: () => {
-            navigate({
-              to: "/hiring-processes",
-            });
-            toast.success("Sign up successful");
+          onSuccess: async () => {
+            // Invalidate and refetch session to ensure it's up to date
+            queryClient.invalidateQueries({ queryKey: sessionKeys.all });
+            
+            // Wait for session to be available
+            const sessionData = await authClient.getSession();
+            
+            if (sessionData.data) {
+              // Update session in query cache
+              queryClient.setQueryData(sessionKeys.session(), sessionData.data);
+              
+              // Navigate to caseload
+              navigate({
+                to: "/caseload",
+              });
+              toast.success("Sign up successful");
+            } else {
+              // Fallback: use window location for hard redirect
+              window.location.href = "/caseload";
+            }
           },
           onError: (error) => {
             toast.error(error.error.message || error.error.statusText);
