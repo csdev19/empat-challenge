@@ -31,7 +31,7 @@ jobs:
         run: bun add -g wrangler
 
       - name: Build packages only
-        run: bun run build --filter='@interviews-tool/*'
+        run: bun run build --filter='@empat-challenge/*'
 
       - name: Build Frontend step
         working-directory: apps/web
