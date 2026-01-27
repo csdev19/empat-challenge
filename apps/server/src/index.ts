@@ -1,6 +1,6 @@
 import { cors } from "@elysiajs/cors";
 import { createAuth } from "@empat-challenge/auth";
-import { Elysia } from "elysia";
+import { Elysia, t } from "elysia";
 import { studentRoutes } from "./routes/students";
 import { studentProfileRoutes } from "./routes/student-profile";
 import { caseloadRoutes } from "./routes/caseload";
@@ -11,18 +11,14 @@ import { trialDataRoutes } from "./routes/trial-data";
 import { sessionRecordingRoutes } from "./routes/session-recording";
 import { gameOutputRoutes } from "./routes/game-output";
 import { getEnv } from "./utils/env";
-import {
-  handleGameWebSocket,
-  handleWebSocketMessage,
-  handleWebSocketClose,
-} from "./websocket/game-server";
-import { createDatabaseClient } from "@empat-challenge/db/client";
-import { therapySessionTable, slpTable } from "@empat-challenge/db/schemas";
-import { eq, and, isNull } from "drizzle-orm";
+import { GameRoom } from "./websocket/game-room";
+import { getDefaultPromptSetId } from "./utils/prompt-loader";
+import type { PlayerRole } from "@empat-challenge/domain/types";
 
 const env = getEnv();
-const auth = createAuth(env.CORS_ORIGIN);
-const db = createDatabaseClient(env.DATABASE_URL);
+
+// In-memory storage for game rooms
+const gameRooms = new Map<string, GameRoom>();
 
 // Configure CORS once at the app level
 const corsConfig = {
@@ -53,116 +49,182 @@ const apiRoutes = new Elysia({
     timestamp: new Date().toISOString(),
   }));
 
+// Store all connected hello world clients for broadcasting
+const helloClients = new Set<any>();
+
 const app = new Elysia()
   .use(authRoutes)
   .use(apiRoutes)
-  .ws("/ws/game/:sessionId", {
-    query: {
-      token: { type: "string", optional: true },
-      role: { type: "string" },
+  .use(cors(corsConfig))
+  .ws("/ws/hello", {
+    open(ws) {
+      console.log("[HelloWorld] Client connected, total:", helloClients.size + 1);
+      helloClients.add(ws);
+
+      // Send welcome message
+      ws.send(JSON.stringify({
+        type: "hello",
+        message: "Connected! You can now send and receive messages.",
+        timestamp: new Date().toISOString(),
+      }));
     },
-    async open(ws) {
+    message(ws, message) {
+      console.log("[HelloWorld] Received:", message);
+
+      // Broadcast to ALL connected clients (including sender for confirmation)
+      const broadcast = JSON.stringify({
+        type: "echo",
+        original: message,
+        response: "Message broadcast to all!",
+        timestamp: new Date().toISOString(),
+      });
+
+      helloClients.forEach((client) => {
+        try {
+          client.send(broadcast);
+        } catch (e) {
+          console.error("[HelloWorld] Failed to send to client:", e);
+        }
+      });
+    },
+    close(ws) {
+      helloClients.delete(ws);
+      console.log("[HelloWorld] Client disconnected, remaining:", helloClients.size);
+    },
+    error(ws, error) {
+      console.error("[HelloWorld] WebSocket error:", error);
+      helloClients.delete(ws);
+    },
+  })
+  .ws("/ws/game/:sessionId", {
+    query: t.Object({
+      role: t.Union([t.Literal("slp"), t.Literal("student")]),
+      token: t.Optional(t.String()),
+    }),
+    open(ws) {
       const sessionId = ws.data.params.sessionId;
-      const token = ws.data.query.token;
-      const roleParam = ws.data.query.role;
+      const role = ws.data.query.role as PlayerRole;
+      const token = ws.data.query.token || null;
 
-      if (!sessionId || !roleParam) {
-        ws.close(1008, "Missing sessionId or role");
+      console.log(`[Game] WebSocket connected: session=${sessionId}, role=${role}, token=${token ? "***" : "none"}`);
+
+      if (!role || (role !== "slp" && role !== "student")) {
+        console.error("[Game] Invalid role:", role);
+        ws.send(JSON.stringify({
+          type: "error",
+          payload: { message: "Invalid role", code: "INVALID_ROLE" },
+          timestamp: new Date().toISOString(),
+        }));
+        ws.close();
         return;
       }
 
-      const role = roleParam as "slp" | "student";
-      if (role !== "slp" && role !== "student") {
-        ws.close(1008, "Invalid role");
-        return;
+      // Generate userId based on role
+      const userId = role === "student" ? `student-${sessionId}` : `slp-${sessionId}`;
+
+      // Store connection data
+      (ws.data as any).sessionId = sessionId;
+      (ws.data as any).role = role;
+      (ws.data as any).userId = userId;
+
+      // Get or create game room
+      let room = gameRooms.get(sessionId);
+      if (!room) {
+        room = new GameRoom(sessionId);
+        gameRooms.set(sessionId, room);
+        console.log(`[Game] Created new room for session ${sessionId}`);
       }
 
-      // Validate and get user info (similar to handleGameWebSocket)
-      try {
-        let userId: string;
-        let slpId: string | null = null;
+      // Add player to room
+      room.addPlayer({
+        id: userId,
+        role,
+        ws: ws.raw,
+      });
 
-        if (role === "slp") {
-          // For SLP, validate session from cookies
-          const session = await auth.api.getSession({ headers: ws.data.headers || {} });
-          if (!session?.user) {
-            ws.close(1008, "Unauthorized");
-            return;
-          }
-          userId = session.user.id;
+      // Initialize game if both players are present and game not started
+      if (!room.getGameState() && room.hasPlayer("slp") && room.hasPlayer("student")) {
+        const defaultPromptSetId = getDefaultPromptSetId();
+        room.initializeGame(defaultPromptSetId).catch((error) => {
+          console.error("[Game] Failed to initialize game:", error);
+        });
+      } else if (
+        room.getGameState()?.status === "waiting" &&
+        room.hasPlayer("slp") &&
+        room.hasPlayer("student")
+      ) {
+        room.startGame().catch((error) => {
+          console.error("[Game] Failed to start game:", error);
+        });
+      }
 
-          // Get SLP record
-          const [slp] = await db
-            .select()
-            .from(slpTable)
-            .where(and(eq(slpTable.userId, userId), isNull(slpTable.deletedAt)))
-            .limit(1);
-
-          if (!slp) {
-            ws.close(1008, "SLP profile not found");
-            return;
-          }
-          slpId = slp.id;
-        } else {
-          // For student, validate link token
-          if (!token) {
-            ws.close(1008, "Token required for student");
-            return;
-          }
-
-          const [session] = await db
-            .select()
-            .from(therapySessionTable)
-            .where(
-              and(
-                eq(therapySessionTable.id, sessionId),
-                eq(therapySessionTable.linkToken, token),
-                isNull(therapySessionTable.deletedAt),
-              ),
-            )
-            .limit(1);
-
-          if (!session) {
-            ws.close(1008, "Invalid session token");
-            return;
-          }
-          userId = `student-${sessionId}`;
-        }
-
-        // Verify session exists
-        const [session] = await db
-          .select()
-          .from(therapySessionTable)
-          .where(and(eq(therapySessionTable.id, sessionId), isNull(therapySessionTable.deletedAt)))
-          .limit(1);
-
-        if (!session) {
-          ws.close(1008, "Session not found");
-          return;
-        }
-
-        // Verify SLP owns the session (for SLP role)
-        if (role === "slp" && session.slpId !== slpId) {
-          ws.close(1008, "Session does not belong to this SLP");
-          return;
-        }
-
-        // Store connection data
-        // @ts-expect-error - Custom data on WebSocket
-        ws.data = { ...ws.data, sessionId, role, userId };
-
-        // Client will send join-game message automatically
-        // No need to send it from server
-      } catch (error) {
-        console.error("[GameServer] Error in WebSocket open:", error);
-        ws.close(1011, "Internal server error");
+      // Send current game state if available
+      const gameState = room.getGameState();
+      if (gameState) {
+        ws.send(JSON.stringify({
+          type: "game-state",
+          payload: gameState,
+          timestamp: new Date().toISOString(),
+        }));
+      } else {
+        // Send waiting message
+        ws.send(JSON.stringify({
+          type: "waiting",
+          payload: { message: "Waiting for other player to join..." },
+          timestamp: new Date().toISOString(),
+        }));
       }
     },
     message(ws, message) {
-      handleWebSocketMessage(ws, message as string | Buffer);
+      const sessionId = (ws.data as any).sessionId;
+      const role = (ws.data as any).role as PlayerRole;
+
+      console.log(`[Game] Message from ${role} in session ${sessionId}:`, message);
+
+      const room = gameRooms.get(sessionId);
+      if (!room) {
+        ws.send(JSON.stringify({
+          type: "error",
+          payload: { message: "Game room not found", code: "ROOM_NOT_FOUND" },
+          timestamp: new Date().toISOString(),
+        }));
+        return;
+      }
+
+      // The GameRoom handles messages through its own handlers set up in addPlayer
+      // But we can also forward messages here if needed for join-game
+      if (typeof message === "object" && message !== null) {
+        const msg = message as { type: string; payload?: unknown };
+        if (msg.type === "join-game") {
+          // Player already added in open(), just send current state
+          const gameState = room.getGameState();
+          if (gameState) {
+            ws.send(JSON.stringify({
+              type: "game-state",
+              payload: gameState,
+              timestamp: new Date().toISOString(),
+            }));
+          }
+        }
+      }
     },
     close(ws) {
-      handleWebSocketClose(ws);
+      const sessionId = (ws.data as any).sessionId;
+      const role = (ws.data as any).role as PlayerRole;
+
+      console.log(`[Game] WebSocket closed: session=${sessionId}, role=${role}`);
+
+      const room = gameRooms.get(sessionId);
+      if (room && role) {
+        room.removePlayer(role);
+        if (room.getPlayerCount() === 0) {
+          gameRooms.delete(sessionId);
+          console.log(`[Game] Removed empty room for session ${sessionId}`);
+        }
+      }
+    },
+    error(ws, error) {
+      console.error("[Game] WebSocket error:", error);
     },
   });
 
@@ -172,7 +234,9 @@ export type App = typeof app;
 const port = Number(process.env.PORT) || 3000;
 
 app.listen(port, () => {
-  console.log(`🚀 Server is running on port ${port}`);
-  console.log(`📍 Environment: ${process.env.NODE_ENV || "development"}`);
-  console.log(`🔌 WebSocket support enabled`);
+  console.log(`Server is running on port ${port}`);
+  console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
+  console.log(`WebSocket endpoints:`);
+  console.log(`  - Hello World: ws://localhost:${port}/ws/hello`);
+  console.log(`  - Game: ws://localhost:${port}/ws/game/:sessionId?role=slp|student`);
 });

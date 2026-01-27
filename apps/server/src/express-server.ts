@@ -1,10 +1,13 @@
+import express from "express";
+import { WebSocketServer, WebSocket } from "ws";
+import { createServer } from "http";
 import { createAuth } from "@empat-challenge/auth";
 import { createDatabaseClient } from "@empat-challenge/db/client";
-import { therapySessionTable, slpTable } from "@empat-challenge/db/schemas";
+import { therapySessionTable } from "@empat-challenge/db/schemas";
 import { eq, and, isNull } from "drizzle-orm";
-import { getEnv } from "../utils/env";
-import { GameRoom } from "./game-room";
-import { getDefaultPromptSetId } from "../utils/prompt-loader";
+import { getEnv } from "./utils/env";
+import { GameRoom } from "./websocket/game-room";
+import { getDefaultPromptSetId } from "./utils/prompt-loader";
 import type { PlayerRole } from "@empat-challenge/domain/types";
 
 const env = getEnv();
@@ -14,27 +17,87 @@ const db = createDatabaseClient(env.DATABASE_URL);
 // In-memory storage for game rooms
 const gameRooms = new Map<string, GameRoom>();
 
-/**
- * Handle WebSocket connection for game sessions (Bun native WebSocket upgrade)
- *
- * Authentication:
- * - Students: Validated by session link token (passed as query param)
- * - SLPs: Validated by authentication cookie and SLP profile ownership
- *
- * Students never need an SLP profile - they are implicitly invited via session link
- */
-export async function handleGameWebSocket(request: Request): Promise<Response> {
+// Create Express app
+const app = express();
+
+// CORS middleware
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", env.CORS_ORIGIN);
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, Cookie");
+  res.header("Access-Control-Allow-Credentials", "true");
+  
+  if (req.method === "OPTIONS") {
+    res.sendStatus(200);
+    return;
+  }
+  
+  next();
+});
+
+// Middleware
+app.use(express.json());
+app.use((req, res, next) => {
+  console.log(`[Express] ${req.method} ${req.path}`);
+  next();
+});
+
+// Health check
+app.get("/health", (req, res) => {
+  res.json({
+    status: "healthy",
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Create HTTP server
+const server = createServer(app);
+
+// Handle WebSocket upgrade requests
+server.on("upgrade", (request, socket, head) => {
+  const pathname = request.url ? new URL(request.url, `http://${request.headers.host}`).pathname : "";
+  
+  // Only handle /ws/game/* paths
+  if (pathname.startsWith("/ws/game/")) {
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      // The connection handler will be called with the upgraded WebSocket
+      handleWebSocketConnection(ws, request);
+    });
+  } else {
+    socket.destroy();
+  }
+});
+
+// Create WebSocket server - handle upgrade requests manually
+const wss = new WebSocketServer({ 
+  noServer: true, // Don't auto-upgrade, we'll handle it manually
+});
+
+// WebSocket connection handler
+async function handleWebSocketConnection(ws: WebSocket, request: any) {
   try {
-    console.log("[GameServer] WebSocket upgrade request received");
+    console.log("[GameServer] WebSocket connection attempt");
     console.log("[GameServer] Request URL:", request.url);
     
-    // Extract session ID from URL path
-    const url = new URL(request.url);
+    if (!request.url) {
+      console.warn("[GameServer] Connection rejected: missing URL");
+      ws.close(1008, "Missing URL");
+      return;
+    }
+
+    // Parse URL to extract sessionId and query params
+    // Handle both absolute and relative URLs
+    const baseUrl = request.headers.host 
+      ? `http://${request.headers.host}`
+      : `http://localhost:${port}`;
+    const url = new URL(request.url, baseUrl);
     console.log("[GameServer] Parsed URL pathname:", url.pathname);
+    
+    // Extract sessionId from path (format: /ws/game/:sessionId)
     const pathParts = url.pathname.split("/").filter((part) => part.length > 0);
     console.log("[GameServer] Path parts:", pathParts);
     
-    // Find sessionId - it should be after "/ws/game/"
+    // Find sessionId - it should be after "game"
     const gameIndex = pathParts.indexOf("game");
     const sessionId = gameIndex >= 0 && gameIndex < pathParts.length - 1 
       ? pathParts[gameIndex + 1] 
@@ -44,7 +107,8 @@ export async function handleGameWebSocket(request: Request): Promise<Response> {
 
     if (!sessionId) {
       console.warn("[GameServer] Connection rejected: missing sessionId");
-      return new Response("Session ID required", { status: 400 });
+      ws.close(1008, "Session ID required");
+      return;
     }
 
     // Extract token and role from query params
@@ -55,19 +119,16 @@ export async function handleGameWebSocket(request: Request): Promise<Response> {
 
     if (!roleParam) {
       console.warn("[GameServer] Connection rejected: missing role");
-      return new Response("Role required", { status: 400 });
+      ws.close(1008, "Role required");
+      return;
     }
 
     const role = roleParam as PlayerRole;
     if (role !== "slp" && role !== "student") {
       console.warn(`[GameServer] Connection rejected: invalid role ${roleParam}`);
-      return new Response("Invalid role", { status: 400 });
+      ws.close(1008, "Invalid role");
+      return;
     }
-
-    // Validate token and get user
-    console.log(
-      `[GameServer] WebSocket upgrade attempt: role=${role}, sessionId=${sessionId}`,
-    );
 
     // ============================================
     // SIMPLIFIED VALIDATION (PUBLIC - NO SECURITY)
@@ -102,7 +163,15 @@ export async function handleGameWebSocket(request: Request): Promise<Response> {
       // Try to get user from auth session if available, but don't require it
       let slpUserId: string | null = null;
       try {
-        const authSession = await auth.api.getSession({ headers: request.headers });
+        // Convert Express request to fetch-like headers
+        const headers = new Headers();
+        Object.entries(request.headers).forEach(([key, value]) => {
+          if (value) {
+            headers.set(key, Array.isArray(value) ? value[0] : value);
+          }
+        });
+        
+        const authSession = await auth.api.getSession({ headers });
         if (authSession?.user) {
           slpUserId = authSession.user.id;
           console.log(`[GameServer] Found auth session for user ${slpUserId}`);
@@ -127,63 +196,45 @@ export async function handleGameWebSocket(request: Request): Promise<Response> {
       console.log(`[GameServer] SLP connected (public mode) with userId: ${userId}`);
     } else {
       console.error(`[GameServer] Invalid role: ${role}`);
-      return new Response("Invalid role", { status: 400 });
+      ws.close(1008, "Invalid role");
+      return;
     }
 
-    // For Bun, use native WebSocket upgrade
-    // @ts-expect-error - Bun global
-    if (typeof Bun !== "undefined" && Bun.upgrade) {
-      try {
-        console.log("[GameServer] Attempting Bun WebSocket upgrade");
-        // @ts-expect-error - Bun WebSocket upgrade
-        const upgrade = Bun.upgrade(request, {
-          data: {
-            sessionId,
-            role,
-            userId,
-          },
-        });
+    // Store connection data on WebSocket
+    (ws as any).data = {
+      sessionId,
+      role,
+      userId,
+    };
 
-        if (upgrade) {
-          console.log("[GameServer] WebSocket upgrade successful");
-          // Set up message and close handlers
-          upgrade.socket.addEventListener("message", (event: any) => {
-            handleWebSocketMessage(upgrade.socket, event.data as string | Buffer);
-          });
+    console.log("[GameServer] WebSocket connection established");
 
-          upgrade.socket.addEventListener("close", () => {
-            handleWebSocketClose(upgrade.socket);
-          });
+    // Set up message handler
+    ws.on("message", (data: Buffer) => {
+      handleWebSocketMessage(ws, data.toString());
+    });
 
-          upgrade.socket.addEventListener("error", (error: any) => {
-            console.error("[GameServer] WebSocket error:", error);
-          });
+    // Set up close handler
+    ws.on("close", () => {
+      handleWebSocketClose(ws);
+    });
 
-          return upgrade.response;
-        } else {
-          console.error("[GameServer] Bun.upgrade returned null/undefined");
-        }
-      } catch (error) {
-        console.error("[GameServer] WebSocket upgrade error:", error);
-        console.error("[GameServer] Upgrade error stack:", error instanceof Error ? error.stack : "No stack");
-        return new Response(`WebSocket upgrade failed: ${error instanceof Error ? error.message : String(error)}`, { status: 500 });
-      }
-    } else {
-      console.error("[GameServer] Bun or Bun.upgrade not available");
-    }
+    // Set up error handler
+    ws.on("error", (error) => {
+      console.error("[GameServer] WebSocket error:", error);
+    });
 
-    return new Response("WebSocket upgrade failed - Bun not available", { status: 500 });
   } catch (error) {
-    console.error("[GameServer] Error handling WebSocket:", error);
+    console.error("[GameServer] Error setting up WebSocket connection:", error);
     console.error("[GameServer] Error stack:", error instanceof Error ? error.stack : "No stack");
-    return new Response(`Internal server error: ${error instanceof Error ? error.message : String(error)}`, { status: 500 });
+    ws.close(1011, `Internal server error: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
-export function handleWebSocketMessage(ws: any, message: string | Buffer): void {
+function handleWebSocketMessage(ws: WebSocket, message: string): void {
   try {
-    // Extract data from Elysia WebSocket
-    const data = ws.data as { sessionId: string; role: PlayerRole; userId: string } | undefined;
+    // Extract data from WebSocket
+    const data = (ws as any).data as { sessionId: string; role: PlayerRole; userId: string } | undefined;
     if (!data) {
       ws.close(1008, "Invalid connection data");
       return;
@@ -199,7 +250,7 @@ export function handleWebSocketMessage(ws: any, message: string | Buffer): void 
     }
 
     // Parse message
-    const parsed = JSON.parse(message as string);
+    const parsed = JSON.parse(message);
 
     // Handle join-game message (first message after connection)
     if (parsed.type === "join-game") {
@@ -256,10 +307,10 @@ export function handleWebSocketMessage(ws: any, message: string | Buffer): void 
   }
 }
 
-export function handleWebSocketClose(ws: any): void {
+function handleWebSocketClose(ws: WebSocket): void {
   try {
-    // Extract data from Elysia WebSocket
-    const data = ws.data as { sessionId: string; role: PlayerRole } | undefined;
+    // Extract data from WebSocket
+    const data = (ws as any).data as { sessionId: string; role: PlayerRole } | undefined;
     if (data) {
       const room = gameRooms.get(data.sessionId);
       if (room) {
@@ -279,3 +330,13 @@ export function handleWebSocketClose(ws: any): void {
 export function getGameRoom(sessionId: string): GameRoom | undefined {
   return gameRooms.get(sessionId);
 }
+
+// Start server
+const port = Number(process.env.PORT) || 3000;
+
+server.listen(port, () => {
+  console.log(`🚀 Express server is running on port ${port}`);
+  console.log(`📍 Environment: ${process.env.NODE_ENV || "development"}`);
+  console.log(`🔌 WebSocket support enabled at ws://localhost:${port}/ws/game/:sessionId`);
+  console.log(`🌐 CORS enabled for: ${env.CORS_ORIGIN}`);
+});

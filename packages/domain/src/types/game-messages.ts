@@ -1,8 +1,8 @@
 /**
- * WebSocket Message Types for Word-Picture Match Game
+ * WebSocket Message Types for Word-Picture Choice Game
  */
 
-import type { PlayerRole } from "./game-state";
+import type { PlayerRole, Prompt } from "./game-state";
 
 export interface GameMessage {
   type: string;
@@ -21,37 +21,16 @@ export interface JoinGameMessage extends GameMessage {
   };
 }
 
-export interface FlipCardMessage extends GameMessage {
-  type: "flip-card";
+export interface SelectOptionMessage extends GameMessage {
+  type: "select-option";
   payload: {
-    cardId: string;
+    optionId: string;
   };
-  player: PlayerRole;
+  player: "student";
 }
 
-export interface CheckMatchMessage extends GameMessage {
-  type: "check-match";
-  payload: {
-    card1Id: string;
-    card2Id: string;
-  };
-  player: PlayerRole;
-}
-
-export interface EndTurnMessage extends GameMessage {
-  type: "end-turn";
-  payload: Record<string, never>;
-  player: PlayerRole;
-}
-
-export interface PauseGameMessage extends GameMessage {
-  type: "pause-game";
-  payload: Record<string, never>;
-  player: "slp";
-}
-
-export interface ResumeGameMessage extends GameMessage {
-  type: "resume-game";
+export interface NextPromptMessage extends GameMessage {
+  type: "next-prompt";
   payload: Record<string, never>;
   player: "slp";
 }
@@ -69,56 +48,31 @@ export interface GameStateMessage extends GameMessage {
   payload: import("./game-state").GameState;
 }
 
-export interface CardFlippedMessage extends GameMessage {
-  type: "card-flipped";
+export interface AnswerResultMessage extends GameMessage {
+  type: "answer-result";
   payload: {
-    cardId: string;
-    player: PlayerRole;
-  };
-}
-
-export interface MatchResultMessage extends GameMessage {
-  type: "match-result";
-  payload: {
-    card1Id: string;
-    card2Id: string;
+    optionId: string;
     correct: boolean;
-    player: PlayerRole;
-    newScore: {
-      slp: { matches: number; attempts: number; accuracy: number };
-      student: { matches: number; attempts: number; accuracy: number };
-    };
+    attempts: number;
+    correctAttempts: number;
   };
 }
 
-export interface TurnChangedMessage extends GameMessage {
-  type: "turn-changed";
+export interface NewPromptMessage extends GameMessage {
+  type: "new-prompt";
   payload: {
-    currentPlayer: PlayerRole;
-    reason: "incorrect-match" | "end-turn" | "game-start";
+    prompt: Prompt;
   };
 }
 
 export interface GameCompletedMessage extends GameMessage {
   type: "game-completed";
   payload: {
-    finalScore: {
-      slp: { matches: number; attempts: number; accuracy: number };
-      student: { matches: number; attempts: number; accuracy: number };
-    };
-    winner: PlayerRole | "tie";
+    attempts: number;
+    correctAttempts: number;
+    accuracy: number;
     duration: number; // seconds
   };
-}
-
-export interface GamePausedMessage extends GameMessage {
-  type: "game-paused";
-  payload: Record<string, never>;
-}
-
-export interface GameResumedMessage extends GameMessage {
-  type: "game-resumed";
-  payload: Record<string, never>;
 }
 
 export interface GameErrorMessage extends GameMessage {
@@ -132,20 +86,14 @@ export interface GameErrorMessage extends GameMessage {
 // Union type for all client messages
 export type ClientGameMessage =
   | JoinGameMessage
-  | FlipCardMessage
-  | CheckMatchMessage
-  | EndTurnMessage
-  | PauseGameMessage
-  | ResumeGameMessage
+  | SelectOptionMessage
+  | NextPromptMessage
   | EndGameMessage;
 
 // Union type for all server messages
 export type ServerGameMessage =
   | GameStateMessage
-  | CardFlippedMessage
-  | MatchResultMessage
-  | TurnChangedMessage
+  | AnswerResultMessage
+  | NewPromptMessage
   | GameCompletedMessage
-  | GamePausedMessage
-  | GameResumedMessage
   | GameErrorMessage;

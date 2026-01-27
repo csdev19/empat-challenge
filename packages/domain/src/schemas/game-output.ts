@@ -23,7 +23,7 @@ export const gameOutputEventSchema = z.object({
   type: z.string(),
   player: z.enum(["slp", "student"]),
   timestamp: z.string(),
-  data: z.record(z.unknown()).optional(),
+  data: z.record(z.string(), z.unknown()).optional(),
 });
 
 /**
@@ -34,14 +34,14 @@ export const gameOutputBaseSchema = z.object({
   id: z.uuid(),
   therapySessionId: z.uuid(),
   gameType: z.string().min(1, "Game type is required"),
-  gameState: z.record(z.unknown()).nullable().optional(),
+  gameState: z.record(z.string(), z.unknown()).nullable().optional(),
   score: z.number().int().nullable().optional(),
-  accuracy: z.number().min(0).max(100).nullable().optional(),
-  duration: z.number().int().positive().nullable().optional(), // Duration in seconds
-  turnsPlayed: z.number().int().nonnegative().nullable().optional(),
+  accuracy: z.number().min(0, "Accuracy must be at least 0").max(100, "Accuracy cannot exceed 100").nullable().optional(),
+  duration: z.number().int().positive("Duration must be positive").nullable().optional(), // Duration in seconds
+  turnsPlayed: z.number().int().nonnegative("Turns played cannot be negative").nullable().optional(),
   playerResults: gameOutputPlayerResultsSchema.nullable().optional(),
   gameEvents: z.array(gameOutputEventSchema).nullable().optional(),
-  metadata: z.record(z.unknown()).nullable().optional(),
+  metadata: z.record(z.string(), z.unknown()).nullable().optional(),
   startedAt: z.coerce.date().nullable().optional(),
   completedAt: z.coerce.date().nullable().optional(),
   createdAt: z.coerce.date(),
@@ -56,14 +56,14 @@ export const createGameOutputSchema = gameOutputBaseSchema.pick({
   therapySessionId: true,
   gameType: true,
 }).extend({
-  gameState: z.record(z.unknown()).optional(),
+  gameState: z.record(z.string(), z.unknown()).optional(),
   score: z.number().int().optional(),
-  accuracy: z.number().min(0).max(100).optional(),
-  duration: z.number().int().positive().optional(),
-  turnsPlayed: z.number().int().nonnegative().optional(),
+  accuracy: z.number().min(0, "Accuracy must be at least 0").max(100, "Accuracy cannot exceed 100").optional(),
+  duration: z.number().int().positive("Duration must be positive").optional(),
+  turnsPlayed: z.number().int().nonnegative("Turns played cannot be negative").optional(),
   playerResults: gameOutputPlayerResultsSchema.optional(),
   gameEvents: z.array(gameOutputEventSchema).optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
   startedAt: z.coerce.date().optional(),
   completedAt: z.coerce.date().optional(),
 });

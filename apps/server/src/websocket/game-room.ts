@@ -1,34 +1,23 @@
 import type {
   GameState,
-  CardState,
-  Match,
   PlayerRole,
-  GameStatus,
 } from "@empat-challenge/domain/types";
 import { createDatabaseClient } from "@empat-challenge/db/client";
-import { gameOutputTable, therapySessionTable, trialDataTable } from "@empat-challenge/db/schemas";
-import { eq, and, isNull } from "drizzle-orm";
+import { gameOutputTable, trialDataTable } from "@empat-challenge/db/schemas";
+import { eq } from "drizzle-orm";
 import { getEnv } from "../utils/env";
+import {
+  type PromptSet,
+  loadPromptSet,
+  shufflePromptOptions,
+} from "../utils/prompt-loader";
 
 const env = getEnv();
 
 interface Player {
   id: string;
   role: PlayerRole;
-  ws: WebSocket;
-}
-
-interface GameCardSet {
-  id: string;
-  name: string;
-  difficulty: "easy" | "medium" | "hard";
-  cards: Array<{
-    id: string;
-    type: "word" | "picture";
-    content: string;
-    matchId: string;
-    imageUrl?: string;
-  }>;
+  ws: any; // Elysia WebSocket type
 }
 
 export class GameRoom {
@@ -36,8 +25,10 @@ export class GameRoom {
   private players: Map<PlayerRole, Player> = new Map();
   private therapySessionId: string;
   private gameOutputId: string | null = null;
-  private attemptCounter = 0;
   private db = createDatabaseClient(env.DATABASE_URL);
+  private promptSet: PromptSet | null = null;
+  private currentPromptIndex = 0;
+  private promptHistory: string[] = []; // Track shown prompt IDs
 
   constructor(therapySessionId: string) {
     this.therapySessionId = therapySessionId;
@@ -57,7 +48,7 @@ export class GameRoom {
     this.players.set(player.role, player);
 
     // Setup WebSocket handlers
-    player.ws.onmessage = (event) => {
+    player.ws.onmessage = (event: any) => {
       try {
         const message = JSON.parse(event.data as string);
         this.handleMessage(message, player.role);
@@ -72,7 +63,7 @@ export class GameRoom {
       console.log(`[GameRoom] Player ${player.role} disconnected`);
     };
 
-    player.ws.onerror = (error) => {
+    player.ws.onerror = (error: any) => {
       console.error(`[GameRoom] WebSocket error for ${player.role}:`, error);
     };
 
@@ -86,46 +77,48 @@ export class GameRoom {
     this.players.delete(role);
   }
 
-  async initializeGame(cardSet: GameCardSet, firstPlayer: PlayerRole = "slp"): Promise<void> {
-    // Create card states from card set
-    const cards: CardState[] = cardSet.cards.map((card, index) => ({
-      id: card.id,
-      type: card.type,
-      content: card.content,
-      matchId: card.matchId,
-      imageUrl: card.imageUrl,
-      flipped: false,
-      matched: false,
-      position: index,
-    }));
+  async initializeGame(promptSetId: string): Promise<void> {
+    // Load prompt set
+    this.promptSet = loadPromptSet(promptSetId);
+    this.currentPromptIndex = 0;
 
-    // Shuffle positions
-    this.shuffleArray(cards);
+    // Validate prompt set has prompts
+    if (!this.promptSet.prompts || this.promptSet.prompts.length === 0) {
+      throw new Error("Prompt set has no prompts");
+    }
+
+    // Get first prompt
+    const firstPromptData = this.promptSet.prompts[0];
+    if (!firstPromptData) {
+      throw new Error("First prompt not found");
+    }
+
+    // Shuffle options for variety
+    const firstPrompt = shufflePromptOptions(firstPromptData);
 
     // Initialize game state
     this.gameState = {
       gameId: crypto.randomUUID(),
       therapySessionId: this.therapySessionId,
-      gameType: "word-picture-match",
+      gameType: "word-picture-choice",
       status: "waiting",
-      currentPlayer: firstPlayer,
-      turnsPlayed: 0,
-      cardSetId: cardSet.id,
-      cards,
-      flippedCards: [],
-      matches: [],
-      score: {
-        slp: { matches: 0, attempts: 0, accuracy: 0 },
-        student: { matches: 0, attempts: 0, accuracy: 0 },
-      },
+      currentPrompt: firstPrompt,
+      turn: "student",
+      attempts: 0,
+      correctAttempts: 0,
       startedAt: null,
       completedAt: null,
       lastActivityAt: new Date().toISOString(),
       metadata: {
-        difficulty: cardSet.difficulty,
-        cardSetName: cardSet.name,
+        difficulty: this.promptSet.difficulty,
+        promptSetName: this.promptSet.name,
+        promptSetId: this.promptSet.id,
+        totalPrompts: this.promptSet.prompts.length,
+        currentPromptIndex: 0,
       },
     };
+
+    this.promptHistory.push(firstPrompt.id);
 
     // Create game output record
     try {
@@ -134,13 +127,15 @@ export class GameRoom {
         .values({
           id: this.gameState.gameId,
           therapySessionId: this.therapySessionId,
-          gameType: "word-picture-match",
+          gameType: "word-picture-choice",
           gameState: this.gameState as unknown as Record<string, unknown>,
           startedAt: new Date(),
         })
         .returning();
 
-      this.gameOutputId = gameOutput.id;
+      if (gameOutput) {
+        this.gameOutputId = gameOutput.id;
+      }
     } catch (error) {
       console.error("[GameRoom] Failed to create game output:", error);
     }
@@ -154,22 +149,13 @@ export class GameRoom {
   async startGame(): Promise<void> {
     if (!this.gameState) return;
 
-    this.gameState.status = "playing";
+    this.gameState.status = "active";
     this.gameState.startedAt = new Date().toISOString();
     this.gameState.lastActivityAt = new Date().toISOString();
 
     this.broadcast({
       type: "game-state",
       payload: this.gameState,
-      timestamp: new Date().toISOString(),
-    });
-
-    this.broadcast({
-      type: "turn-changed",
-      payload: {
-        currentPlayer: this.gameState.currentPlayer,
-        reason: "game-start",
-      },
       timestamp: new Date().toISOString(),
     });
   }
@@ -183,27 +169,11 @@ export class GameRoom {
     const msg = message as { type: string; payload: unknown };
 
     switch (msg.type) {
-      case "flip-card":
-        await this.handleFlipCard(msg.payload as { cardId: string }, playerRole);
+      case "select-option":
+        await this.handleSelectOption(msg.payload as { optionId: string }, playerRole);
         break;
-      case "check-match":
-        await this.handleCheckMatch(
-          msg.payload as { card1Id: string; card2Id: string },
-          playerRole,
-        );
-        break;
-      case "end-turn":
-        await this.handleEndTurn(playerRole);
-        break;
-      case "pause-game":
-        if (playerRole === "slp") {
-          await this.handlePauseGame();
-        }
-        break;
-      case "resume-game":
-        if (playerRole === "slp") {
-          await this.handleResumeGame();
-        }
+      case "next-prompt":
+        await this.handleNextPrompt(playerRole);
         break;
       case "end-game":
         if (playerRole === "slp") {
@@ -215,167 +185,76 @@ export class GameRoom {
     }
   }
 
-  private async handleFlipCard(payload: { cardId: string }, playerRole: PlayerRole): Promise<void> {
+  private async handleSelectOption(
+    payload: { optionId: string },
+    playerRole: PlayerRole
+  ): Promise<void> {
     if (!this.gameState) return;
 
-    // Validate it's player's turn
-    if (this.gameState.currentPlayer !== playerRole) {
+    // Only student can select options
+    if (playerRole !== "student") {
       this.sendError(
         this.players.get(playerRole)?.ws,
-        "Not your turn",
+        "Only student can select options"
       );
       return;
     }
 
-    // Validate card exists and not already matched
-    const card = this.gameState.cards.find((c) => c.id === payload.cardId);
-    if (!card) {
-      this.sendError(this.players.get(playerRole)?.ws, "Card not found");
+    // Check if game is active
+    if (this.gameState.status !== "active") {
+      this.sendError(
+        this.players.get(playerRole)?.ws,
+        "Game is not active"
+      );
       return;
     }
 
-    if (card.matched) {
-      this.sendError(this.players.get(playerRole)?.ws, "Card already matched");
+    // Find selected option
+    const selectedOption = this.gameState.currentPrompt.options.find(
+      (opt) => opt.id === payload.optionId
+    );
+
+    if (!selectedOption) {
+      this.sendError(this.players.get(playerRole)?.ws, "Option not found");
       return;
     }
 
-    if (card.flipped) {
-      this.sendError(this.players.get(playerRole)?.ws, "Card already flipped");
-      return;
+    // Update attempts and correct attempts
+    this.gameState.attempts++;
+    if (selectedOption.isCorrect) {
+      this.gameState.correctAttempts++;
     }
 
-    // Validate max 2 cards flipped
-    if (this.gameState.flippedCards.length >= 2) {
-      this.sendError(this.players.get(playerRole)?.ws, "Maximum 2 cards can be flipped");
-      return;
-    }
-
-    // Flip card
-    card.flipped = true;
-    this.gameState.flippedCards.push(card.id);
-    this.gameState.lastActivityAt = new Date().toISOString();
-
-    // Broadcast card flipped
-    this.broadcast({
-      type: "card-flipped",
-      payload: {
-        cardId: card.id,
-        player: playerRole,
-      },
+    // Update last answer
+    this.gameState.lastAnswer = {
+      optionId: payload.optionId,
+      correct: selectedOption.isCorrect,
       timestamp: new Date().toISOString(),
-    });
-
-    // Send updated game state
-    this.broadcast({
-      type: "game-state",
-      payload: this.gameState,
-      timestamp: new Date().toISOString(),
-    });
-  }
-
-  private async handleCheckMatch(
-    payload: { card1Id: string; card2Id: string },
-    playerRole: PlayerRole,
-  ): Promise<void> {
-    if (!this.gameState) return;
-
-    // Validate it's player's turn
-    if (this.gameState.currentPlayer !== playerRole) {
-      this.sendError(this.players.get(playerRole)?.ws, "Not your turn");
-      return;
-    }
-
-    // Validate both cards are flipped
-    const card1 = this.gameState.cards.find((c) => c.id === payload.card1Id);
-    const card2 = this.gameState.cards.find((c) => c.id === payload.card2Id);
-
-    if (!card1 || !card2) {
-      this.sendError(this.players.get(playerRole)?.ws, "One or both cards not found");
-      return;
-    }
-
-    if (!card1.flipped || !card2.flipped) {
-      this.sendError(this.players.get(playerRole)?.ws, "Both cards must be flipped");
-      return;
-    }
-
-    if (card1.matched || card2.matched) {
-      this.sendError(this.players.get(playerRole)?.ws, "One or both cards already matched");
-      return;
-    }
-
-    // Check if cards match
-    const isMatch = card1.matchId === card2.id || card2.matchId === card1.id;
-    this.attemptCounter++;
-
-    // Update scores
-    const playerScore = this.gameState.score[playerRole];
-    playerScore.attempts++;
-    if (isMatch) {
-      playerScore.matches++;
-    }
-    playerScore.accuracy = playerScore.attempts > 0
-      ? (playerScore.matches / playerScore.attempts) * 100
-      : 0;
-
-    // Create match record
-    const match: Match = {
-      card1Id: card1.id,
-      card2Id: card2.id,
-      player: playerRole,
-      correct: isMatch,
-      timestamp: new Date().toISOString(),
-      attemptNumber: this.attemptCounter,
     };
 
-    this.gameState.matches.push(match);
+    this.gameState.lastActivityAt = new Date().toISOString();
 
     // Record trial in database
     try {
       await this.db.insert(trialDataTable).values({
         id: crypto.randomUUID(),
         therapySessionId: this.therapySessionId,
-        trialNumber: this.attemptCounter,
-        isCorrect: isMatch,
-        notes: `Game match attempt: ${card1.content} + ${card2.content}`,
+        trialNumber: this.gameState.attempts,
+        isCorrect: selectedOption.isCorrect,
+        notes: `Prompt: ${this.gameState.currentPrompt.word}, Selected: ${payload.optionId}`,
       });
     } catch (error) {
       console.error("[GameRoom] Failed to record trial:", error);
     }
 
-    if (isMatch) {
-      // Mark cards as matched
-      card1.matched = true;
-      card2.matched = true;
-      this.gameState.flippedCards = [];
-      this.gameState.turnsPlayed++;
-
-      // Check if game is complete
-      const allMatched = this.gameState.cards.every((c) => c.matched);
-      if (allMatched) {
-        await this.completeGame();
-        return;
-      }
-    } else {
-      // Cards don't match - flip them back and switch turns
-      card1.flipped = false;
-      card2.flipped = false;
-      this.gameState.flippedCards = [];
-      this.gameState.currentPlayer = playerRole === "slp" ? "student" : "slp";
-      this.gameState.turnsPlayed++;
-    }
-
-    this.gameState.lastActivityAt = new Date().toISOString();
-
-    // Broadcast match result
+    // Broadcast answer result
     this.broadcast({
-      type: "match-result",
+      type: "answer-result",
       payload: {
-        card1Id: card1.id,
-        card2Id: card2.id,
-        correct: isMatch,
-        player: playerRole,
-        newScore: this.gameState.score,
+        optionId: payload.optionId,
+        correct: selectedOption.isCorrect,
+        attempts: this.gameState.attempts,
+        correctAttempts: this.gameState.correctAttempts,
       },
       timestamp: new Date().toISOString(),
     });
@@ -386,88 +265,68 @@ export class GameRoom {
       payload: this.gameState,
       timestamp: new Date().toISOString(),
     });
-
-    // If incorrect match, switch turns
-    if (!isMatch) {
-      this.broadcast({
-        type: "turn-changed",
-        payload: {
-          currentPlayer: this.gameState.currentPlayer,
-          reason: "incorrect-match",
-        },
-        timestamp: new Date().toISOString(),
-      });
-    }
   }
 
-  private async handleEndTurn(playerRole: PlayerRole): Promise<void> {
-    if (!this.gameState) return;
+  private async handleNextPrompt(playerRole: PlayerRole): Promise<void> {
+    if (!this.gameState || !this.promptSet) return;
 
-    if (this.gameState.currentPlayer !== playerRole) {
-      this.sendError(this.players.get(playerRole)?.ws, "Not your turn");
+    // Only SLP can advance to next prompt
+    if (playerRole !== "slp") {
+      this.sendError(
+        this.players.get(playerRole)?.ws,
+        "Only SLP can advance to next prompt"
+      );
       return;
     }
 
-    // Flip back any flipped cards
-    this.gameState.cards.forEach((card) => {
-      if (card.flipped && !card.matched) {
-        card.flipped = false;
-      }
-    });
-    this.gameState.flippedCards = [];
+    // Check if game is active
+    if (this.gameState.status !== "active") {
+      this.sendError(
+        this.players.get(playerRole)?.ws,
+        "Game is not active"
+      );
+      return;
+    }
 
-    // Switch turns
-    this.gameState.currentPlayer = playerRole === "slp" ? "student" : "slp";
-    this.gameState.turnsPlayed++;
+    // Move to next prompt
+    this.currentPromptIndex++;
+
+    // Check if all prompts completed
+    if (this.currentPromptIndex >= this.promptSet.prompts.length) {
+      await this.completeGame();
+      return;
+    }
+
+    // Get next prompt
+    const nextPromptData = this.promptSet.prompts[this.currentPromptIndex];
+    if (!nextPromptData) {
+      await this.completeGame();
+      return;
+    }
+
+    // Shuffle options for variety
+    const nextPrompt = shufflePromptOptions(nextPromptData);
+
+    // Update game state
+    this.gameState.currentPrompt = nextPrompt;
     this.gameState.lastActivityAt = new Date().toISOString();
+    
+    if (this.gameState.metadata) {
+      this.gameState.metadata.currentPromptIndex = this.currentPromptIndex;
+    }
 
+    this.promptHistory.push(nextPrompt.id);
+
+    // Broadcast new prompt
     this.broadcast({
-      type: "turn-changed",
+      type: "new-prompt",
       payload: {
-        currentPlayer: this.gameState.currentPlayer,
-        reason: "end-turn",
+        prompt: nextPrompt,
       },
       timestamp: new Date().toISOString(),
     });
 
-    this.broadcast({
-      type: "game-state",
-      payload: this.gameState,
-      timestamp: new Date().toISOString(),
-    });
-  }
-
-  private async handlePauseGame(): Promise<void> {
-    if (!this.gameState || this.gameState.status !== "playing") return;
-
-    this.gameState.status = "paused";
-    this.gameState.lastActivityAt = new Date().toISOString();
-
-    this.broadcast({
-      type: "game-paused",
-      payload: {},
-      timestamp: new Date().toISOString(),
-    });
-
-    this.broadcast({
-      type: "game-state",
-      payload: this.gameState,
-      timestamp: new Date().toISOString(),
-    });
-  }
-
-  private async handleResumeGame(): Promise<void> {
-    if (!this.gameState || this.gameState.status !== "paused") return;
-
-    this.gameState.status = "playing";
-    this.gameState.lastActivityAt = new Date().toISOString();
-
-    this.broadcast({
-      type: "game-resumed",
-      payload: {},
-      timestamp: new Date().toISOString(),
-    });
-
+    // Send updated game state
     this.broadcast({
       type: "game-state",
       payload: this.gameState,
@@ -493,45 +352,30 @@ export class GameRoom {
     const completedAt = Date.now();
     const duration = Math.floor((completedAt - startedAt) / 1000);
 
-    // Determine winner
-    const slpScore = this.gameState.score.slp.matches;
-    const studentScore = this.gameState.score.student.matches;
-    let winner: PlayerRole | "tie" = "tie";
-    if (slpScore > studentScore) {
-      winner = "slp";
-    } else if (studentScore > slpScore) {
-      winner = "student";
-    }
+    // Calculate accuracy
+    const accuracy = this.gameState.attempts > 0
+      ? (this.gameState.correctAttempts / this.gameState.attempts) * 100
+      : 0;
 
     // Update game output in database
     if (this.gameOutputId) {
       try {
-        const slpAccuracy = this.gameState.score.slp.accuracy;
-        const studentAccuracy = this.gameState.score.student.accuracy;
-        const overallAccuracy = (slpAccuracy + studentAccuracy) / 2;
-
         await this.db
           .update(gameOutputTable)
           .set({
             gameState: this.gameState as unknown as Record<string, unknown>,
-            score: slpScore + studentScore,
-            accuracy: overallAccuracy.toString(),
+            score: this.gameState.correctAttempts,
+            accuracy: accuracy.toString(),
             duration,
-            turnsPlayed: this.gameState.turnsPlayed,
+            turnsPlayed: this.gameState.attempts,
             playerResults: {
-              slp: this.gameState.score.slp,
-              student: this.gameState.score.student,
-            },
-            gameEvents: this.gameState.matches.map((m) => ({
-              type: "match",
-              player: m.player,
-              timestamp: m.timestamp,
-              data: {
-                card1Id: m.card1Id,
-                card2Id: m.card2Id,
-                correct: m.correct,
+              student: {
+                attempts: this.gameState.attempts,
+                correctAttempts: this.gameState.correctAttempts,
+                accuracy,
               },
-            })),
+            },
+            gameEvents: [],
             completedAt: new Date(),
           })
           .where(eq(gameOutputTable.id, this.gameOutputId));
@@ -544,8 +388,9 @@ export class GameRoom {
     this.broadcast({
       type: "game-completed",
       payload: {
-        finalScore: this.gameState.score,
-        winner,
+        attempts: this.gameState.attempts,
+        correctAttempts: this.gameState.correctAttempts,
+        accuracy,
         duration,
       },
       timestamp: new Date().toISOString(),
@@ -561,7 +406,8 @@ export class GameRoom {
   private broadcast(message: { type: string; payload: unknown; timestamp: string }): void {
     const json = JSON.stringify(message);
     this.players.forEach((player) => {
-      if (player.ws.readyState === WebSocket.OPEN) {
+      // Check readyState (1 = OPEN for WebSocket)
+      if (player.ws.readyState === 1) {
         try {
           player.ws.send(json);
         } catch (error) {
@@ -571,8 +417,8 @@ export class GameRoom {
     });
   }
 
-  private sendError(ws: WebSocket | undefined, message: string, code?: string): void {
-    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  private sendError(ws: any, message: string, code?: string): void {
+    if (!ws || ws.readyState !== 1) return; // 1 = OPEN
 
     try {
       ws.send(
@@ -587,8 +433,8 @@ export class GameRoom {
     }
   }
 
-  private sendGameState(ws: WebSocket): void {
-    if (!this.gameState || ws.readyState !== WebSocket.OPEN) return;
+  private sendGameState(ws: any): void {
+    if (!this.gameState || ws.readyState !== 1) return; // 1 = OPEN
 
     try {
       ws.send(
@@ -600,13 +446,6 @@ export class GameRoom {
       );
     } catch (error) {
       console.error("[GameRoom] Failed to send game state:", error);
-    }
-  }
-
-  private shuffleArray<T>(array: T[]): void {
-    for (let i = array.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [array[i], array[j]] = [array[j], array[i]];
     }
   }
 

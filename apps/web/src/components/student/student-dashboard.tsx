@@ -34,7 +34,7 @@ export function StudentDashboard() {
 
   const sessions = sessionsData?.data || [];
   const availableSessions = sessions.filter(
-    (s) =>
+    (s: any) =>
       s.status === THERAPY_SESSION_STATUSES.SCHEDULED ||
       s.status === THERAPY_SESSION_STATUSES.ACTIVE,
   );
@@ -57,12 +57,10 @@ export function StudentDashboard() {
               <Video className="h-5 w-5 text-primary" />
               Available Sessions
             </CardTitle>
-            <CardDescription>
-              Join a therapy session that your teacher has created
-            </CardDescription>
+            <CardDescription>Join a therapy session that your teacher has created</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {availableSessions.map((therapySession) => (
+            {availableSessions.map((therapySession: any) => (
               <div
                 key={therapySession.id}
                 className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
@@ -163,9 +161,7 @@ export function StudentDashboard() {
               <BookOpen className="h-5 w-5 text-primary" />
               <CardTitle>My Sessions</CardTitle>
             </div>
-            <CardDescription>
-              View your past and upcoming therapy sessions
-            </CardDescription>
+            <CardDescription>View your past and upcoming therapy sessions</CardDescription>
           </CardHeader>
           <CardContent>
             <Button variant="outline" className="w-full">
@@ -181,9 +177,7 @@ export function StudentDashboard() {
               <User className="h-5 w-5 text-primary" />
               <CardTitle>My Profile</CardTitle>
             </div>
-            <CardDescription>
-              View and update your student profile information
-            </CardDescription>
+            <CardDescription>View and update your student profile information</CardDescription>
           </CardHeader>
           <CardContent>
             <Button variant="outline" className="w-full">
@@ -209,9 +203,7 @@ export function StudentDashboard() {
           {studentProfile?.age && (
             <div>
               <span className="text-sm font-medium">Age:</span>{" "}
-              <span className="text-sm text-muted-foreground">
-                {studentProfile.age}
-              </span>
+              <span className="text-sm text-muted-foreground">{studentProfile.age}</span>
             </div>
           )}
         </CardContent>

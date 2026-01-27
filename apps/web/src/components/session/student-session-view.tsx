@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@empa
 import { Button } from "@empat-challenge/web-ui";
 import { useValidateSessionLink } from "@/hooks/use-session-link";
 import { WordPictureMatchGame } from "@/components/game/word-picture-match/game-container";
+import { HelloWorldGame } from "@/components/game/hello-world-game";
 import Loader from "@/components/loader";
 import { AlertCircle, Video } from "lucide-react";
 
@@ -219,12 +220,23 @@ export function StudentSessionView({ linkToken }: StudentSessionViewProps) {
         </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Hello World WebSocket Test */}
+          <Card>
+            <CardHeader>
+              <CardTitle>WebSocket Connection Test</CardTitle>
+              <CardDescription>Test WebSocket connection to server</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <HelloWorldGame />
+            </CardContent>
+          </Card>
+
           {/* Video Call Container */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Video className="h-5 w-5" />
-                Video Call
+                Video Call 2
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -287,8 +299,8 @@ export function StudentSessionView({ linkToken }: StudentSessionViewProps) {
             </CardContent>
           </Card>
 
-          {/* Word-Picture Match Game */}
-          {sessionInfo.status === "active" && (
+          {/* Word-Picture Match Game - TEMPORARILY HIDDEN */}
+          {false && sessionInfo.status === "active" && (
             <WordPictureMatchGame
               sessionId={sessionInfo.sessionId}
               token={linkToken}

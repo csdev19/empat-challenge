@@ -34,7 +34,7 @@ export function CaseloadView() {
   // sessionsData structure: { data: T[], error: null, meta: {...} }
   const sessions = sessionsData?.data || [];
   const activeSessions = sessions.filter(
-    (s) =>
+    (s: any) =>
       s.status === THERAPY_SESSION_STATUSES.ACTIVE ||
       s.status === THERAPY_SESSION_STATUSES.SCHEDULED,
   );
@@ -50,9 +50,12 @@ export function CaseloadView() {
   }
 
   // Get students list (handle empty case)
-  const students = error && (error instanceof Error && (error.message.includes("404") || error.message.includes("not found")))
-    ? []
-    : (data?.data || []);
+  const students =
+    error &&
+    error instanceof Error &&
+    (error.message.includes("404") || error.message.includes("not found"))
+      ? []
+      : data?.data || [];
 
   const handleGenerateLink = async () => {
     // Check if there's already an active session
@@ -187,7 +190,7 @@ export function CaseloadView() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {activeSessions.map((session) => (
+            {activeSessions.map((session: any) => (
               <div
                 key={session.id}
                 className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
@@ -202,9 +205,7 @@ export function CaseloadView() {
                           : "bg-blue-500/20 text-blue-600 dark:text-blue-400"
                       }`}
                     >
-                      {session.status === THERAPY_SESSION_STATUSES.ACTIVE
-                        ? "Active"
-                        : "Scheduled"}
+                      {session.status === THERAPY_SESSION_STATUSES.ACTIVE ? "Active" : "Scheduled"}
                     </span>
                   </div>
                   {session.createdAt && (

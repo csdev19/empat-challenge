@@ -1,0 +1,194 @@
+---
+title: Game Rewrite V2 - Word-Picture Match Game
+description: Comprehensive documentation of the Word-Picture Match game rewrite including architecture, WebSocket protocol, game mechanics, and data flow
+tags:
+  - think-process
+  - game-rewrite
+  - v2
+  - game
+  - websocket
+  - phaser
+---
+
+# Game Rewrite V2 - Word-Picture Match Game
+
+Word–Picture Choice Game (Turn-Based)
+
+Overview
+The Word–Picture Choice Game is a simple turn-based educational activity designed to help students practice reading comprehension and word recognition during therapy sessions.
+
+The game is intentionally minimal and focuses on observable learning signals, not competition.
+
+⸻
+
+Core Principles
+	•	One action per turn
+	•	One learning prompt at a time
+	•	Clear correct / incorrect outcomes
+	•	Teacher always observes the student’s actions
+	•	No complex game mechanics or animations
+
+⸻
+
+Game Flow
+	1.	The SLP starts the game during a therapy session
+	2.	The system displays:
+	•	A target word (e.g. “DOG”)
+	•	A set of picture options (e.g. dog, cat, bird)
+	3.	It is the student’s turn
+	4.	The student selects one option
+	5.	The system evaluates the selection:
+	•	Correct → success
+	•	Incorrect → error
+	6.	The result is:
+	•	Recorded as a trial
+	•	Shown immediately to the SLP
+	7.	The turn ends
+	8.	The SLP advances to the next word
+
+⸻
+
+Turn-Based Rules
+	•	Only the student performs actions
+	•	The SLP controls progression
+	•	Each selection = one turn
+	•	The server enforces:
+	•	One selection per turn
+	•	Valid option IDs only
+	•	Session ownership
+
+This ensures predictable behavior and easy synchronization.
+
+⸻
+
+Educational Signals Recorded
+
+Each student action records:
+	•	Selected option ID
+	•	Whether it was correct
+	•	Timestamp
+	•	Word ID
+	•	Session ID
+
+From this, the system can derive:
+	•	Accuracy %
+	•	Attempts count
+	•	Error patterns
+
+⸻
+
+4. Minimal Game State (THIS is what you implement)
+
+GameState (simple and fast)
+
+
+```ts
+interface GameState {
+  therapySessionId: string;
+  status: "waiting" | "active" | "completed";
+
+  currentPrompt: {
+    id: string;
+    word: string;
+    options: {
+      id: string;
+      imageUrl: string;
+      isCorrect: boolean;
+    }[];
+  };
+
+  turn: "student";
+  attempts: number;
+  correctAttempts: number;
+
+  lastAnswer?: {
+    optionId: string;
+    correct: boolean;
+    timestamp: string;
+  };
+}
+```
+
+
+That’s it.
+No cards. No grids. No flipping.
+
+⸻
+
+WebSocket Messages (MINIMAL)
+
+Student → Server
+
+
+```ts
+{
+  type: "select-option",
+  payload: {
+    optionId: string;
+  }
+}
+```
+
+Server → All
+
+```ts
+{
+  type: "answer-result",
+  payload: {
+    optionId: string;
+    correct: boolean;
+    attempts: number;
+    correctAttempts: number;
+  }
+}
+
+{
+  type: "new-prompt",
+  payload: {
+    word: string;
+    options: Option[];
+  }
+}
+```
+
+That’s enough for a full demo.
+
+⸻
+
+5. Why this is the right level of simple
+
+This version:
+
+✅ Can be built in 1–2 days
+✅ Is clearly educational
+✅ Is easy to observe as a teacher
+✅ Produces clean session data
+✅ Avoids overengineering
+✅ Still uses WebSockets correctly
+
+And most importantly:
+
+It leaves room to grow later (difficulty levels, syllables, sounds, etc.)
+
+⸻
+
+6. What I recommend you do next (concrete)
+	1.	Delete / archive the card-matching logic
+	2.	Create a new doc:
+  ```architecture/games/word-picture-choice.mdx```
+
+
+	3.	Implement:
+	•	static prompt list (JSON)
+	•	one WebSocket handler
+	•	one React + Phaser scene
+	4.	Ship the first playable version
+	5.	Iterate only if time allows
+
+⸻
+
+If you want next, I can:
+	•	design the prompt JSON structure
+	•	sketch the Phaser scene (super simple)
+	•	help you connect trial recording cleanly
+	•	or review your WebSocket handler logic

@@ -21,11 +21,7 @@ interface AddStudentsDialogProps {
   onSuccess?: () => void;
 }
 
-export function AddStudentsDialog({
-  open,
-  onOpenChange,
-  onSuccess,
-}: AddStudentsDialogProps) {
+export function AddStudentsDialog({ open, onOpenChange, onSuccess }: AddStudentsDialogProps) {
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -35,7 +31,7 @@ export function AddStudentsDialog({
   const addStudents = useAddStudentsToCaseload();
 
   const students = data?.data || [];
-  const filteredStudents = students.filter((student) =>
+  const filteredStudents = students.filter((student: StudentBase) =>
     student.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
@@ -53,7 +49,7 @@ export function AddStudentsDialog({
     if (selectedStudentIds.size === filteredStudents.length) {
       setSelectedStudentIds(new Set());
     } else {
-      setSelectedStudentIds(new Set(filteredStudents.map((s) => s.id)));
+      setSelectedStudentIds(new Set(filteredStudents.map((s: StudentBase) => s.id)));
     }
   };
 
@@ -111,12 +107,7 @@ export function AddStudentsDialog({
           {/* Select All */}
           {filteredStudents.length > 0 && (
             <div className="flex items-center justify-between">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSelectAll}
-                disabled={isLoading}
-              >
+              <Button variant="outline" size="sm" onClick={handleSelectAll} disabled={isLoading}>
                 {selectedStudentIds.size === filteredStudents.length
                   ? "Deselect All"
                   : "Select All"}
@@ -142,12 +133,14 @@ export function AddStudentsDialog({
             ) : filteredStudents.length === 0 ? (
               <div className="flex items-center justify-center py-8">
                 <p className="text-sm text-muted-foreground">
-                  {searchQuery ? "No students found matching your search." : "No available students."}
+                  {searchQuery
+                    ? "No students found matching your search."
+                    : "No available students."}
                 </p>
               </div>
             ) : (
               <div className="divide-y">
-                {filteredStudents.map((student) => (
+                {filteredStudents.map((student: StudentBase) => (
                   <div
                     key={student.id}
                     className="flex items-center space-x-3 p-3 hover:bg-muted/50 cursor-pointer"
@@ -155,7 +148,9 @@ export function AddStudentsDialog({
                   >
                     <Checkbox
                       checked={selectedStudentIds.has(student.id)}
-                      onCheckedChange={(checked) => handleToggleStudent(student.id, checked as boolean)}
+                      onCheckedChange={(checked) =>
+                        handleToggleStudent(student.id, checked as boolean)
+                      }
                     />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium">{student.name}</p>
@@ -176,9 +171,11 @@ export function AddStudentsDialog({
           {data?.meta?.pagination && data.meta.pagination.total > limit && (
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">
-                Showing {data.meta.pagination.page * data.meta.pagination.limit -
+                Showing{" "}
+                {data.meta.pagination.page * data.meta.pagination.limit -
                   data.meta.pagination.limit +
-                  1} to{" "}
+                  1}{" "}
+                to{" "}
                 {Math.min(
                   data.meta.pagination.page * data.meta.pagination.limit,
                   data.meta.pagination.total,
@@ -198,9 +195,7 @@ export function AddStudentsDialog({
                   variant="outline"
                   size="sm"
                   onClick={() => setPage((p) => p + 1)}
-                  disabled={
-                    page * limit >= (data.meta.pagination.total || 0) || isLoading
-                  }
+                  disabled={page * limit >= (data.meta.pagination.total || 0) || isLoading}
                 >
                   Next
                 </Button>

@@ -11,6 +11,7 @@ import {
 } from "@empat-challenge/web-ui";
 import { Button, Input, Label } from "@empat-challenge/web-ui";
 import { useCreateSLP } from "@/hooks/use-slp";
+import type { createSLPSchema } from "@empat-challenge/domain/schemas";
 
 interface CreateSLPProfileDialogProps {
   open: boolean;
@@ -27,11 +28,13 @@ export function CreateSLPProfileDialog({
 }: CreateSLPProfileDialogProps) {
   const createSLP = useCreateSLP();
 
+  const defaultValues: z.infer<typeof createSLPSchema> = {
+    name: defaultName,
+    phone: undefined,
+  };
+
   const form = useForm({
-    defaultValues: {
-      name: defaultName,
-      phone: "",
-    },
+    defaultValues,
     onSubmit: async ({ value }) => {
       try {
         await createSLP.mutateAsync({

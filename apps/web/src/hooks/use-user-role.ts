@@ -7,6 +7,10 @@ export type UserRole = "teacher" | "student" | "unknown";
 /**
  * Hook to determine the user's role (teacher/student)
  * Returns the role and loading state
+ *
+ * NOTE: This hook calls both SLP and Student endpoints to determine role.
+ * This is intentional - we need to check both to know which role the user has.
+ * The backend returns 404 for "not found" which is expected and handled gracefully.
  */
 export function useUserRole() {
   const { data: slp, isLoading: slpLoading, error: slpError } = useSLP();
@@ -25,9 +29,12 @@ export function useUserRole() {
   }
 
   // If both failed with "not found", role is unknown (needs onboarding)
-  const slpNotFound = slpError instanceof Error && 
+  // Note: 404 errors are expected and normal - they just mean the user doesn't have that profile type
+  const slpNotFound =
+    slpError instanceof Error &&
     (slpError.message.includes("not found") || slpError.message.includes("404"));
-  const studentNotFound = studentError instanceof Error && 
+  const studentNotFound =
+    studentError instanceof Error &&
     (studentError.message.includes("not found") || studentError.message.includes("404"));
 
   if (!isLoading && slpNotFound && studentNotFound) {

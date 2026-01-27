@@ -14,8 +14,10 @@ import { successBody } from "../utils/response-helpers";
 import { errorHandlerPlugin } from "../utils/error-handler-plugin";
 import { getEnv } from "../utils/env";
 import { authMacro } from "@/plugins/auth.plugin";
+import { createAuth } from "@empat-challenge/auth";
 
 const env = getEnv();
+const auth = createAuth(env.CORS_ORIGIN);
 
 /**
  * Get or create session recording for a therapy session
@@ -53,39 +55,98 @@ async function getOrCreateSessionRecording(
   return { id: created?.id || "" };
 }
 
+/**
+ * Session Recording Routes
+ * 
+ * These endpoints allow both SLPs and Students to access session recordings:
+ * - SLPs: Authenticated via cookie, must own the session
+ * - Students: Authenticated via session link token (passed as query param)
+ */
 export const sessionRecordingRoutes = new Elysia({ prefix: "/session-recording" })
   .use(errorHandlerPlugin)
   .decorate("db", createDatabaseClient(env.DATABASE_URL))
   .use(authMacro)
   .get(
     "/:therapySessionId",
-    async ({ params, db, user }) => {
-      // Get SLP for the authenticated user
-      const [slp] = await db
-        .select()
-        .from(slpTable)
-        .where(and(eq(slpTable.userId, user.id), isNull(slpTable.deletedAt)))
-        .limit(1);
+    async ({ params, db, query, request }) => {
+      const linkToken = query?.token as string | undefined;
+      const isStudentAccess = !!linkToken;
 
-      if (!slp) {
-        throw new NotFoundError("SLP profile not found");
-      }
+      console.log(`[SessionRecording] GET request: sessionId=${params.therapySessionId}, isStudentAccess=${isStudentAccess}`);
 
-      // Verify session belongs to SLP
-      const [session] = await db
-        .select()
-        .from(therapySessionTable)
-        .where(
-          and(
-            eq(therapySessionTable.id, params.therapySessionId),
-            eq(therapySessionTable.slpId, slp.id),
-            isNull(therapySessionTable.deletedAt),
-          ),
-        )
-        .limit(1);
+      let session;
 
-      if (!session) {
-        throw new NotFoundError("Therapy session not found");
+      if (isStudentAccess) {
+        // ============================================
+        // STUDENT ACCESS - Validate via link token
+        // ============================================
+        console.log("[SessionRecording] Validating student access via link token");
+
+        // Verify the session exists and the token matches
+        const [sessionRecord] = await db
+          .select()
+          .from(therapySessionTable)
+          .where(
+            and(
+              eq(therapySessionTable.id, params.therapySessionId),
+              eq(therapySessionTable.linkToken, linkToken),
+              isNull(therapySessionTable.deletedAt),
+            ),
+          )
+          .limit(1);
+
+        if (!sessionRecord) {
+          console.warn("[SessionRecording] Student access rejected: invalid session token or session not found");
+          throw new NotFoundError("Session not found or invalid link token");
+        }
+
+        session = sessionRecord;
+        console.log("[SessionRecording] Student access validated successfully");
+      } else {
+        // ============================================
+        // SLP ACCESS - Validate via authentication and SLP profile
+        // ============================================
+        console.log("[SessionRecording] Validating SLP access");
+
+        // Check authentication manually (user might not exist if auth is optional)
+        const authSession = await auth.api.getSession({ headers: request.headers });
+        if (!authSession?.user) {
+          console.warn("[SessionRecording] SLP access rejected: not authenticated");
+          throw new NotFoundError("Please sign in to access this session");
+        }
+
+        // Get SLP for the authenticated user
+        const [slp] = await db
+          .select()
+          .from(slpTable)
+          .where(and(eq(slpTable.userId, authSession.user.id), isNull(slpTable.deletedAt)))
+          .limit(1);
+
+        if (!slp) {
+          console.warn(`[SessionRecording] SLP access rejected: SLP profile not found for user ${authSession.user.id}`);
+          throw new NotFoundError("SLP profile not found");
+        }
+
+        // Verify session belongs to SLP
+        const [sessionRecord] = await db
+          .select()
+          .from(therapySessionTable)
+          .where(
+            and(
+              eq(therapySessionTable.id, params.therapySessionId),
+              eq(therapySessionTable.slpId, slp.id),
+              isNull(therapySessionTable.deletedAt),
+            ),
+          )
+          .limit(1);
+
+        if (!sessionRecord) {
+          console.warn(`[SessionRecording] SLP access rejected: session ${params.therapySessionId} not found or doesn't belong to SLP ${slp.id}`);
+          throw new NotFoundError("Therapy session not found");
+        }
+
+        session = sessionRecord;
+        console.log("[SessionRecording] SLP access validated successfully");
       }
 
       // Get or create session recording
@@ -117,7 +178,11 @@ export const sessionRecordingRoutes = new Elysia({ prefix: "/session-recording" 
       params: t.Object({
         therapySessionId: t.String(),
       }),
-      isAuth: true,
+      query: t.Object({
+        token: t.Optional(t.String()),
+      }),
+      // Auth is optional - students can access via link token
+      // SLP access requires authentication (checked manually in handler)
     },
   )
   .put(

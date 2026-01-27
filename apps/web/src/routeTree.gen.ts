@@ -14,6 +14,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as SessionLinkTokenRouteImport } from './routes/session/$linkToken'
 import { Route as AuthSignupRouteImport } from './routes/auth/signup'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
+import { Route as AuthenticatedHelloWorldGameRouteImport } from './routes/_authenticated/hello-world-game'
 import { Route as AuthenticatedStudentDashboardIndexRouteImport } from './routes/_authenticated/student-dashboard/index'
 import { Route as AuthenticatedOnboardingIndexRouteImport } from './routes/_authenticated/onboarding/index'
 import { Route as AuthenticatedCaseloadIndexRouteImport } from './routes/_authenticated/caseload/index'
@@ -47,6 +48,12 @@ const AuthLoginRoute = AuthLoginRouteImport.update({
   path: '/auth/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedHelloWorldGameRoute =
+  AuthenticatedHelloWorldGameRouteImport.update({
+    id: '/hello-world-game',
+    path: '/hello-world-game',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedStudentDashboardIndexRoute =
   AuthenticatedStudentDashboardIndexRouteImport.update({
     id: '/student-dashboard/',
@@ -94,6 +101,7 @@ const AuthenticatedSessionSessionIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/hello-world-game': typeof AuthenticatedHelloWorldGameRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
   '/session/$linkToken': typeof SessionLinkTokenRoute
@@ -108,6 +116,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/hello-world-game': typeof AuthenticatedHelloWorldGameRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
   '/session/$linkToken': typeof SessionLinkTokenRoute
@@ -124,6 +133,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
+  '/_authenticated/hello-world-game': typeof AuthenticatedHelloWorldGameRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
   '/session/$linkToken': typeof SessionLinkTokenRoute
@@ -140,6 +150,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/hello-world-game'
     | '/auth/login'
     | '/auth/signup'
     | '/session/$linkToken'
@@ -154,6 +165,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/hello-world-game'
     | '/auth/login'
     | '/auth/signup'
     | '/session/$linkToken'
@@ -169,6 +181,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/_authenticated/hello-world-game'
     | '/auth/login'
     | '/auth/signup'
     | '/session/$linkToken'
@@ -231,6 +244,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/hello-world-game': {
+      id: '/_authenticated/hello-world-game'
+      path: '/hello-world-game'
+      fullPath: '/hello-world-game'
+      preLoaderRoute: typeof AuthenticatedHelloWorldGameRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/student-dashboard/': {
       id: '/_authenticated/student-dashboard/'
       path: '/student-dashboard'
@@ -291,6 +311,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteChildren {
+  AuthenticatedHelloWorldGameRoute: typeof AuthenticatedHelloWorldGameRoute
   AuthenticatedSessionSessionIdRoute: typeof AuthenticatedSessionSessionIdRoute
   AuthenticatedCaseloadIndexRoute: typeof AuthenticatedCaseloadIndexRoute
   AuthenticatedOnboardingIndexRoute: typeof AuthenticatedOnboardingIndexRoute
@@ -298,6 +319,7 @@ interface AuthenticatedRouteChildren {
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedHelloWorldGameRoute: AuthenticatedHelloWorldGameRoute,
   AuthenticatedSessionSessionIdRoute: AuthenticatedSessionSessionIdRoute,
   AuthenticatedCaseloadIndexRoute: AuthenticatedCaseloadIndexRoute,
   AuthenticatedOnboardingIndexRoute: AuthenticatedOnboardingIndexRoute,

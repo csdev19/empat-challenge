@@ -1,0 +1,179 @@
+{
+  "promptSets": [
+    {
+      "id": "basic-animals-v1",
+      "name": "Basic Animals",
+      "difficulty": "easy",
+      "prompts": [
+        {
+          "id": "prompt-dog-1",
+          "word": "DOG",
+          "options": [
+            {
+              "id": "opt-dog",
+              "imageUrl": "/images/prompts/animals/dog.svg",
+              "isCorrect": true
+            },
+            {
+              "id": "opt-cat",
+              "imageUrl": "/images/prompts/animals/cat.svg",
+              "isCorrect": false
+            },
+            {
+              "id": "opt-bird",
+              "imageUrl": "/images/prompts/animals/bird.svg",
+              "isCorrect": false
+            }
+          ]
+        },
+        {
+          "id": "prompt-cat-1",
+          "word": "CAT",
+          "options": [
+            {
+              "id": "opt-cat-2",
+              "imageUrl": "/images/prompts/animals/cat.svg",
+              "isCorrect": true
+            },
+            {
+              "id": "opt-dog-2",
+              "imageUrl": "/images/prompts/animals/dog.svg",
+              "isCorrect": false
+            },
+            {
+              "id": "opt-fish-2",
+              "imageUrl": "/images/prompts/animals/fish.svg",
+              "isCorrect": false
+            }
+          ]
+        },
+        {
+          "id": "prompt-bird-1",
+          "word": "BIRD",
+          "options": [
+            {
+              "id": "opt-bird-3",
+              "imageUrl": "/images/prompts/animals/bird.svg",
+              "isCorrect": true
+            },
+            {
+              "id": "opt-cat-3",
+              "imageUrl": "/images/prompts/animals/cat.svg",
+              "isCorrect": false
+            },
+            {
+              "id": "opt-dog-3",
+              "imageUrl": "/images/prompts/animals/dog.svg",
+              "isCorrect": false
+            }
+          ]
+        },
+        {
+          "id": "prompt-fish-1",
+          "word": "FISH",
+          "options": [
+            {
+              "id": "opt-fish-4",
+              "imageUrl": "/images/prompts/animals/fish.svg",
+              "isCorrect": true
+            },
+            {
+              "id": "opt-bird-4",
+              "imageUrl": "/images/prompts/animals/bird.svg",
+              "isCorrect": false
+            },
+            {
+              "id": "opt-dog-4",
+              "imageUrl": "/images/prompts/animals/dog.svg",
+              "isCorrect": false
+            }
+          ]
+        },
+        {
+          "id": "prompt-cow-1",
+          "word": "COW",
+          "options": [
+            {
+              "id": "opt-cow-5",
+              "imageUrl": "/images/prompts/animals/cow.svg",
+              "isCorrect": true
+            },
+            {
+              "id": "opt-horse-5",
+              "imageUrl": "/images/prompts/animals/horse.svg",
+              "isCorrect": false
+            },
+            {
+              "id": "opt-pig-5",
+              "imageUrl": "/images/prompts/animals/pig.svg",
+              "isCorrect": false
+            }
+          ]
+        },
+        {
+          "id": "prompt-horse-1",
+          "word": "HORSE",
+          "options": [
+            {
+              "id": "opt-horse-6",
+              "imageUrl": "/images/prompts/animals/horse.svg",
+              "isCorrect": true
+            },
+            {
+              "id": "opt-cow-6",
+              "imageUrl": "/images/prompts/animals/cow.svg",
+              "isCorrect": false
+            },
+            {
+              "id": "opt-pig-6",
+              "imageUrl": "/images/prompts/animals/pig.svg",
+              "isCorrect": false
+            }
+          ]
+        },
+        {
+          "id": "prompt-pig-1",
+          "word": "PIG",
+          "options": [
+            {
+              "id": "opt-pig-7",
+              "imageUrl": "/images/prompts/animals/pig.svg",
+              "isCorrect": true
+            },
+            {
+              "id": "opt-cow-7",
+              "imageUrl": "/images/prompts/animals/cow.svg",
+              "isCorrect": false
+            },
+            {
+              "id": "opt-horse-7",
+              "imageUrl": "/images/prompts/animals/horse.svg",
+              "isCorrect": false
+            }
+          ]
+        },
+        {
+          "id": "prompt-duck-1",
+          "word": "DUCK",
+          "options": [
+            {
+              "id": "opt-duck-8",
+              "imageUrl": "/images/prompts/animals/duck.svg",
+              "isCorrect": true
+            },
+            {
+              "id": "opt-bird-8",
+              "imageUrl": "/images/prompts/animals/bird.svg",
+              "isCorrect": false
+            },
+            {
+              "id": "opt-fish-8",
+              "imageUrl": "/images/prompts/animals/fish.svg",
+              "isCorrect": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
