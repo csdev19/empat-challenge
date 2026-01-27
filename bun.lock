@@ -69,27 +69,6 @@
         "typescript": "^5",
       },
     },
-    "apps/socket": {
-      "name": "socket",
-      "version": "1.0.0",
-      "dependencies": {
-        "@empat-challenge/auth": "workspace:*",
-        "@empat-challenge/db": "workspace:*",
-        "@empat-challenge/domain": "workspace:*",
-        "better-auth": "catalog:",
-        "dotenv": "catalog:",
-        "drizzle-orm": "^0.45.1",
-        "express": "^4.18.2",
-        "ws": "^8.16.0",
-        "zod": "catalog:",
-      },
-      "devDependencies": {
-        "@empat-challenge/config": "workspace:*",
-        "@types/express": "^4.17.21",
-        "@types/ws": "^8.5.10",
-        "typescript": "^5",
-      },
-    },
     "apps/web": {
       "name": "web",
       "dependencies": {
@@ -2562,8 +2541,6 @@
     "sisteransi": ["sisteransi@1.0.5", "", {}, "sha512-bLGGlR1QxBcynn2d5YmDX4MGjlZvy2MRBDRNHLJ8VI6l6+9FUiyTFNJ0IveOSP0bcXgVDPRcfGqA0pjaqUpfVg=="],
 
     "slice-ansi": ["slice-ansi@7.1.2", "", { "dependencies": { "ansi-styles": "^6.2.1", "is-fullwidth-code-point": "^5.0.0" } }, "sha512-iOBWFgUX7caIZiuutICxVgX1SdxwAVFFKwt1EvMYYec/NWO5meOJ6K5uQxhrYBdQJne4KxiqZc+KptFOWFSI9w=="],
-
-    "socket": ["socket@workspace:apps/socket"],
 
     "solid-js": ["solid-js@1.9.10", "", { "dependencies": { "csstype": "^3.1.0", "seroval": "~1.3.0", "seroval-plugins": "~1.3.0" } }, "sha512-Coz956cos/EPDlhs6+jsdTxKuJDPT7B5SVIWgABwROyxjY7Xbr8wkzD68Et+NxnV7DLJ3nJdAC2r9InuV/4Jew=="],
 
