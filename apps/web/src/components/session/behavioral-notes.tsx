@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button } from "@empat-challenge/web-ui";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Button,
+} from "@empat-challenge/web-ui";
 import { Textarea } from "@empat-challenge/web-ui";
 import { useSessionRecording, useUpdateSessionRecording } from "@/hooks/use-session-recording";
 import { Loader2, Save } from "lucide-react";

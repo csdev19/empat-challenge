@@ -62,11 +62,13 @@ const app = new Elysia()
       helloClients.add(ws);
 
       // Send welcome message
-      ws.send(JSON.stringify({
-        type: "hello",
-        message: "Connected! You can now send and receive messages.",
-        timestamp: new Date().toISOString(),
-      }));
+      ws.send(
+        JSON.stringify({
+          type: "hello",
+          message: "Connected! You can now send and receive messages.",
+          timestamp: new Date().toISOString(),
+        }),
+      );
     },
     message(ws, message) {
       console.log("[HelloWorld] Received:", message);
@@ -106,15 +108,19 @@ const app = new Elysia()
       const role = ws.data.query.role as PlayerRole;
       const token = ws.data.query.token || null;
 
-      console.log(`[Game] WebSocket connected: session=${sessionId}, role=${role}, token=${token ? "***" : "none"}`);
+      console.log(
+        `[Game] WebSocket connected: session=${sessionId}, role=${role}, token=${token ? "***" : "none"}`,
+      );
 
       if (!role || (role !== "slp" && role !== "student")) {
         console.error("[Game] Invalid role:", role);
-        ws.send(JSON.stringify({
-          type: "error",
-          payload: { message: "Invalid role", code: "INVALID_ROLE" },
-          timestamp: new Date().toISOString(),
-        }));
+        ws.send(
+          JSON.stringify({
+            type: "error",
+            payload: { message: "Invalid role", code: "INVALID_ROLE" },
+            timestamp: new Date().toISOString(),
+          }),
+        );
         ws.close();
         return;
       }
@@ -161,18 +167,22 @@ const app = new Elysia()
       // Send current game state if available
       const gameState = room.getGameState();
       if (gameState) {
-        ws.send(JSON.stringify({
-          type: "game-state",
-          payload: gameState,
-          timestamp: new Date().toISOString(),
-        }));
+        ws.send(
+          JSON.stringify({
+            type: "game-state",
+            payload: gameState,
+            timestamp: new Date().toISOString(),
+          }),
+        );
       } else {
         // Send waiting message
-        ws.send(JSON.stringify({
-          type: "waiting",
-          payload: { message: "Waiting for other player to join..." },
-          timestamp: new Date().toISOString(),
-        }));
+        ws.send(
+          JSON.stringify({
+            type: "waiting",
+            payload: { message: "Waiting for other player to join..." },
+            timestamp: new Date().toISOString(),
+          }),
+        );
       }
     },
     message(ws, message) {
@@ -183,11 +193,13 @@ const app = new Elysia()
 
       const room = gameRooms.get(sessionId);
       if (!room) {
-        ws.send(JSON.stringify({
-          type: "error",
-          payload: { message: "Game room not found", code: "ROOM_NOT_FOUND" },
-          timestamp: new Date().toISOString(),
-        }));
+        ws.send(
+          JSON.stringify({
+            type: "error",
+            payload: { message: "Game room not found", code: "ROOM_NOT_FOUND" },
+            timestamp: new Date().toISOString(),
+          }),
+        );
         return;
       }
 
@@ -199,11 +211,13 @@ const app = new Elysia()
           // Player already added in open(), just send current state
           const gameState = room.getGameState();
           if (gameState) {
-            ws.send(JSON.stringify({
-              type: "game-state",
-              payload: gameState,
-              timestamp: new Date().toISOString(),
-            }));
+            ws.send(
+              JSON.stringify({
+                type: "game-state",
+                payload: gameState,
+                timestamp: new Date().toISOString(),
+              }),
+            );
           }
         }
       }

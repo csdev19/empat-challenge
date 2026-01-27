@@ -18,7 +18,9 @@ export function WordPictureMatchGame({ sessionId, token, role }: GameProps) {
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [lastFeedback, setLastFeedback] = useState<{ correct: boolean; optionId: string } | null>(null);
+  const [lastFeedback, setLastFeedback] = useState<{ correct: boolean; optionId: string } | null>(
+    null,
+  );
 
   // Initialize WebSocket connection
   useEffect(() => {
@@ -180,7 +182,10 @@ export function WordPictureMatchGame({ sessionId, token, role }: GameProps) {
           <div className="flex items-center gap-2 mb-4">
             <h2 className="text-lg font-semibold">Word-Picture Choice</h2>
           </div>
-          <div className="w-full bg-muted rounded-lg flex flex-col items-center justify-center p-12" style={{ minHeight: "500px" }}>
+          <div
+            className="w-full bg-muted rounded-lg flex flex-col items-center justify-center p-12"
+            style={{ minHeight: "500px" }}
+          >
             <Loader />
             <p className="text-muted-foreground mt-4">Connecting to game server...</p>
           </div>
@@ -197,13 +202,14 @@ export function WordPictureMatchGame({ sessionId, token, role }: GameProps) {
           <div className="flex items-center gap-2 mb-4">
             <h2 className="text-lg font-semibold">Word-Picture Choice</h2>
           </div>
-          <div className="w-full bg-muted rounded-lg flex flex-col items-center justify-center p-12" style={{ minHeight: "500px" }}>
+          <div
+            className="w-full bg-muted rounded-lg flex flex-col items-center justify-center p-12"
+            style={{ minHeight: "500px" }}
+          >
             <XCircle className="h-12 w-12 text-destructive mb-4" />
             <p className="text-destructive font-medium mb-2">Connection Error</p>
             <p className="text-sm text-muted-foreground text-center mb-4">{connectionError}</p>
-            <Button onClick={() => window.location.reload()}>
-              Retry Connection
-            </Button>
+            <Button onClick={() => window.location.reload()}>Retry Connection</Button>
           </div>
         </CardContent>
       </Card>
@@ -222,7 +228,10 @@ export function WordPictureMatchGame({ sessionId, token, role }: GameProps) {
               <span className="text-sm text-muted-foreground">Connected</span>
             </div>
           </div>
-          <div className="w-full bg-muted rounded-lg flex flex-col items-center justify-center p-12" style={{ minHeight: "500px" }}>
+          <div
+            className="w-full bg-muted rounded-lg flex flex-col items-center justify-center p-12"
+            style={{ minHeight: "500px" }}
+          >
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-4" />
             <p className="text-muted-foreground">Waiting for other player to join...</p>
             <p className="text-sm text-muted-foreground mt-2">
@@ -270,7 +279,9 @@ export function WordPictureMatchGame({ sessionId, token, role }: GameProps) {
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-4" />
               <p className="text-muted-foreground">Waiting for game to start...</p>
               <p className="text-sm text-muted-foreground mt-2">
-                {role === "slp" ? "Waiting for student to join..." : "Waiting for therapist to start..."}
+                {role === "slp"
+                  ? "Waiting for student to join..."
+                  : "Waiting for therapist to start..."}
               </p>
             </div>
           )}
@@ -290,10 +301,17 @@ export function WordPictureMatchGame({ sessionId, token, role }: GameProps) {
               <div className="grid grid-cols-2 gap-4 max-w-2xl mx-auto">
                 {currentPrompt.options.map((option) => {
                   const isSelected = selectedOptionId === option.id;
-                  const isCorrectAnswer = lastFeedback?.optionId === option.id && lastFeedback.correct;
-                  const isIncorrectAnswer = lastFeedback?.optionId === option.id && !lastFeedback.correct;
-                  const showCorrectHighlight = lastFeedback && !lastFeedback.correct && option.isCorrect;
-                  const isDisabled = isSubmitting || role !== "student" || gameState.status !== "active" || !!lastFeedback;
+                  const isCorrectAnswer =
+                    lastFeedback?.optionId === option.id && lastFeedback.correct;
+                  const isIncorrectAnswer =
+                    lastFeedback?.optionId === option.id && !lastFeedback.correct;
+                  const showCorrectHighlight =
+                    lastFeedback && !lastFeedback.correct && option.isCorrect;
+                  const isDisabled =
+                    isSubmitting ||
+                    role !== "student" ||
+                    gameState.status !== "active" ||
+                    !!lastFeedback;
 
                   return (
                     <button
@@ -354,7 +372,9 @@ export function WordPictureMatchGame({ sessionId, token, role }: GameProps) {
                   {lastFeedback.correct ? (
                     <p className="text-xl font-semibold text-green-600">Correct! Great job!</p>
                   ) : (
-                    <p className="text-xl font-semibold text-red-600">Not quite. The correct answer is highlighted.</p>
+                    <p className="text-xl font-semibold text-red-600">
+                      Not quite. The correct answer is highlighted.
+                    </p>
                   )}
                 </div>
               )}
@@ -362,18 +382,11 @@ export function WordPictureMatchGame({ sessionId, token, role }: GameProps) {
               {/* SLP Controls */}
               {role === "slp" && (
                 <div className="flex justify-center gap-4 pt-4">
-                  <Button
-                    onClick={handleNextPrompt}
-                    disabled={!lastFeedback}
-                    className="gap-2"
-                  >
+                  <Button onClick={handleNextPrompt} disabled={!lastFeedback} className="gap-2">
                     <SkipForward className="h-4 w-4" />
                     Next Word
                   </Button>
-                  <Button
-                    variant="outline"
-                    onClick={handleEndGame}
-                  >
+                  <Button variant="outline" onClick={handleEndGame}>
                     End Game
                   </Button>
                 </div>

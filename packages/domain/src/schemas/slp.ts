@@ -17,11 +17,13 @@ export const slpBaseSchema = z.object({
 /**
  * Schema for creating an SLP profile
  */
-export const createSLPSchema = slpBaseSchema.pick({
-  name: true,
-}).extend({
-  phone: z.string().optional(),
-});
+export const createSLPSchema = slpBaseSchema
+  .pick({
+    name: true,
+  })
+  .extend({
+    phone: z.string().optional(),
+  });
 
 /**
  * Schema for updating an SLP profile

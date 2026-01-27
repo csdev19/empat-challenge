@@ -1,19 +1,10 @@
 import { Elysia, t } from "elysia";
 import { createDatabaseClient } from "@empat-challenge/db/client";
-import {
-  caseloadTable,
-  slpTable,
-  studentTable,
-} from "@empat-challenge/db/schemas";
-import {
-  addStudentsToCaseloadSchema,
-} from "@empat-challenge/domain/schemas";
+import { caseloadTable, slpTable, studentTable } from "@empat-challenge/db/schemas";
+import { addStudentsToCaseloadSchema } from "@empat-challenge/domain/schemas";
 import { eq, and, isNull, inArray } from "drizzle-orm";
 import { NotFoundError, ConflictError, BadRequestError } from "../utils/errors";
-import {
-  successBody,
-  createdBody,
-} from "../utils/response-helpers";
+import { successBody, createdBody } from "../utils/response-helpers";
 import { errorHandlerPlugin } from "../utils/error-handler-plugin";
 import { getEnv } from "../utils/env";
 import { authMacro } from "@/plugins/auth.plugin";
@@ -42,12 +33,7 @@ export const caseloadRoutes = new Elysia({ prefix: "/caseload" })
       const students = await db
         .select()
         .from(studentTable)
-        .where(
-          and(
-            inArray(studentTable.id, body.studentIds),
-            isNull(studentTable.deletedAt),
-          ),
-        );
+        .where(and(inArray(studentTable.id, body.studentIds), isNull(studentTable.deletedAt)));
 
       if (students.length !== body.studentIds.length) {
         throw new BadRequestError("One or more student IDs are invalid or not found.");
@@ -66,9 +52,7 @@ export const caseloadRoutes = new Elysia({ prefix: "/caseload" })
         );
 
       const existingStudentIds = existingCaseloads.map((c) => c.studentId);
-      const newStudentIds = body.studentIds.filter(
-        (id) => !existingStudentIds.includes(id),
-      );
+      const newStudentIds = body.studentIds.filter((id) => !existingStudentIds.includes(id));
 
       if (newStudentIds.length === 0) {
         throw new ConflictError("All selected students are already in your caseload.");
@@ -81,16 +65,16 @@ export const caseloadRoutes = new Elysia({ prefix: "/caseload" })
         studentId,
       }));
 
-      const created = await db
-        .insert(caseloadTable)
-        .values(newCaseloads)
-        .returning();
+      const created = await db.insert(caseloadTable).values(newCaseloads).returning();
 
-      return status(201, createdBody({
-        added: created.length,
-        skipped: existingStudentIds.length,
-        addedStudents: created.map((c) => c.studentId),
-      }));
+      return status(
+        201,
+        createdBody({
+          added: created.length,
+          skipped: existingStudentIds.length,
+          addedStudents: created.map((c) => c.studentId),
+        }),
+      );
     },
     {
       body: addStudentsToCaseloadSchema,

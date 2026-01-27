@@ -50,9 +50,7 @@ export function TrialTracking({ therapySessionId }: TrialTrackingProps) {
     <Card>
       <CardHeader>
         <CardTitle>Trial Tracking</CardTitle>
-        <CardDescription>
-          Record correct or incorrect responses during the session
-        </CardDescription>
+        <CardDescription>Record correct or incorrect responses during the session</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Statistics */}
@@ -73,9 +71,7 @@ export function TrialTracking({ therapySessionId }: TrialTrackingProps) {
 
         {/* Accuracy */}
         <div className="text-center">
-          <div className="text-3xl font-bold">
-            {stats.accuracy.toFixed(1)}%
-          </div>
+          <div className="text-3xl font-bold">{stats.accuracy.toFixed(1)}%</div>
           <div className="text-sm text-muted-foreground">Accuracy</div>
         </div>
 
@@ -118,28 +114,31 @@ export function TrialTracking({ therapySessionId }: TrialTrackingProps) {
           <div className="space-y-2">
             <label className="text-sm font-medium">Recent Trials</label>
             <div className="space-y-1 max-h-32 overflow-y-auto">
-              {trials.slice(-5).reverse().map((trial) => (
-                <div
-                  key={trial.id}
-                  className={`flex items-center justify-between p-2 rounded text-sm ${
-                    trial.isCorrect ? "bg-green-50" : "bg-red-50"
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    {trial.isCorrect ? (
-                      <CheckCircle2 className="h-4 w-4 text-green-600" />
-                    ) : (
-                      <XCircle className="h-4 w-4 text-red-600" />
-                    )}
-                    Trial #{trial.trialNumber}
-                  </span>
-                  {trial.notes && (
-                    <span className="text-xs text-muted-foreground truncate max-w-[200px]">
-                      {trial.notes}
+              {trials
+                .slice(-5)
+                .reverse()
+                .map((trial) => (
+                  <div
+                    key={trial.id}
+                    className={`flex items-center justify-between p-2 rounded text-sm ${
+                      trial.isCorrect ? "bg-green-50" : "bg-red-50"
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      {trial.isCorrect ? (
+                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <XCircle className="h-4 w-4 text-red-600" />
+                      )}
+                      Trial #{trial.trialNumber}
                     </span>
-                  )}
-                </div>
-              ))}
+                    {trial.notes && (
+                      <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+                        {trial.notes}
+                      </span>
+                    )}
+                  </div>
+                ))}
             </div>
           </div>
         )}

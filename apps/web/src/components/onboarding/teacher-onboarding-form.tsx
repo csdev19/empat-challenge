@@ -29,8 +29,7 @@ export function TeacherOnboardingForm({ defaultName = "" }: TeacherOnboardingFor
         toast.success("Teacher profile created successfully!");
         navigate({ to: "/caseload" });
       } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Failed to create profile";
+        const errorMessage = error instanceof Error ? error.message : "Failed to create profile";
         toast.error(errorMessage);
       }
     },

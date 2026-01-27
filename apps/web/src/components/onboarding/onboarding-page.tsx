@@ -67,9 +67,7 @@ export function OnboardingPage() {
         <Card>
           <CardHeader>
             <CardTitle>I'm a Student</CardTitle>
-            <CardDescription>
-              Create your student profile to join therapy sessions
-            </CardDescription>
+            <CardDescription>Create your student profile to join therapy sessions</CardDescription>
           </CardHeader>
           <CardContent>
             <StudentOnboardingForm defaultName={session?.user?.name || ""} />

@@ -19,13 +19,15 @@ export const trialDataBaseSchema = z.object({
 /**
  * Schema for creating a single trial record
  */
-export const createTrialDataSchema = trialDataBaseSchema.pick({
-  therapySessionId: true,
-  isCorrect: true,
-}).extend({
-  notes: z.string().optional(),
-  timestamp: z.coerce.date().optional(),
-});
+export const createTrialDataSchema = trialDataBaseSchema
+  .pick({
+    therapySessionId: true,
+    isCorrect: true,
+  })
+  .extend({
+    notes: z.string().optional(),
+    timestamp: z.coerce.date().optional(),
+  });
 
 /**
  * Schema for updating a trial record

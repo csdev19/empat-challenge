@@ -1,16 +1,9 @@
-import type {
-  GameState,
-  PlayerRole,
-} from "@empat-challenge/domain/types";
+import type { GameState, PlayerRole } from "@empat-challenge/domain/types";
 import { createDatabaseClient } from "@empat-challenge/db/client";
 import { gameOutputTable, trialDataTable } from "@empat-challenge/db/schemas";
 import { eq } from "drizzle-orm";
 import { getEnv } from "../utils/env";
-import {
-  type PromptSet,
-  loadPromptSet,
-  shufflePromptOptions,
-} from "../utils/prompt-loader";
+import { type PromptSet, loadPromptSet, shufflePromptOptions } from "../utils/prompt-loader";
 
 const env = getEnv();
 
@@ -187,31 +180,25 @@ export class GameRoom {
 
   private async handleSelectOption(
     payload: { optionId: string },
-    playerRole: PlayerRole
+    playerRole: PlayerRole,
   ): Promise<void> {
     if (!this.gameState) return;
 
     // Only student can select options
     if (playerRole !== "student") {
-      this.sendError(
-        this.players.get(playerRole)?.ws,
-        "Only student can select options"
-      );
+      this.sendError(this.players.get(playerRole)?.ws, "Only student can select options");
       return;
     }
 
     // Check if game is active
     if (this.gameState.status !== "active") {
-      this.sendError(
-        this.players.get(playerRole)?.ws,
-        "Game is not active"
-      );
+      this.sendError(this.players.get(playerRole)?.ws, "Game is not active");
       return;
     }
 
     // Find selected option
     const selectedOption = this.gameState.currentPrompt.options.find(
-      (opt) => opt.id === payload.optionId
+      (opt) => opt.id === payload.optionId,
     );
 
     if (!selectedOption) {
@@ -272,19 +259,13 @@ export class GameRoom {
 
     // Only SLP can advance to next prompt
     if (playerRole !== "slp") {
-      this.sendError(
-        this.players.get(playerRole)?.ws,
-        "Only SLP can advance to next prompt"
-      );
+      this.sendError(this.players.get(playerRole)?.ws, "Only SLP can advance to next prompt");
       return;
     }
 
     // Check if game is active
     if (this.gameState.status !== "active") {
-      this.sendError(
-        this.players.get(playerRole)?.ws,
-        "Game is not active"
-      );
+      this.sendError(this.players.get(playerRole)?.ws, "Game is not active");
       return;
     }
 
@@ -310,7 +291,7 @@ export class GameRoom {
     // Update game state
     this.gameState.currentPrompt = nextPrompt;
     this.gameState.lastActivityAt = new Date().toISOString();
-    
+
     if (this.gameState.metadata) {
       this.gameState.metadata.currentPromptIndex = this.currentPromptIndex;
     }
@@ -353,9 +334,10 @@ export class GameRoom {
     const duration = Math.floor((completedAt - startedAt) / 1000);
 
     // Calculate accuracy
-    const accuracy = this.gameState.attempts > 0
-      ? (this.gameState.correctAttempts / this.gameState.attempts) * 100
-      : 0;
+    const accuracy =
+      this.gameState.attempts > 0
+        ? (this.gameState.correctAttempts / this.gameState.attempts) * 100
+        : 0;
 
     // Update game output in database
     if (this.gameOutputId) {

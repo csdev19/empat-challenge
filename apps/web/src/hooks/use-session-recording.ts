@@ -7,16 +7,12 @@ import type {
 } from "@empat-challenge/domain/schemas";
 
 // Re-export types from domain package
-export type {
-  SessionRecordingWithTrials,
-  UpdateSessionRecording,
-};
+export type { SessionRecordingWithTrials, UpdateSessionRecording };
 
 // Query keys
 const sessionRecordingKeys = {
   all: ["sessionRecording"] as const,
-  detail: (therapySessionId: string) =>
-    [...sessionRecordingKeys.all, therapySessionId] as const,
+  detail: (therapySessionId: string) => [...sessionRecordingKeys.all, therapySessionId] as const,
 };
 
 // Fetch session recording with trials
@@ -56,10 +52,7 @@ export function useUpdateSessionRecording() {
     Error,
     { therapySessionId: string; data: UpdateSessionRecording }
   >({
-    mutationFn: async ({
-      therapySessionId,
-      data,
-    }): Promise<SessionRecordingWithTrials> => {
+    mutationFn: async ({ therapySessionId, data }): Promise<SessionRecordingWithTrials> => {
       const result = await clientTreaty.api.v1["session-recording"]({
         therapySessionId,
       }).put(data);
@@ -82,14 +75,8 @@ export function useUpdateSessionRecording() {
 export function useRecalculateSessionMetrics() {
   const queryClient = useQueryClient();
 
-  return useMutation<
-    SessionRecordingWithTrials,
-    Error,
-    { therapySessionId: string }
-  >({
-    mutationFn: async ({
-      therapySessionId,
-    }): Promise<SessionRecordingWithTrials> => {
+  return useMutation<SessionRecordingWithTrials, Error, { therapySessionId: string }>({
+    mutationFn: async ({ therapySessionId }): Promise<SessionRecordingWithTrials> => {
       const result = await clientTreaty.api.v1["session-recording"]({
         therapySessionId,
       })["recalculate"].post();

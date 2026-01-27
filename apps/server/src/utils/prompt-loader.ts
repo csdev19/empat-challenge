@@ -37,11 +37,11 @@ interface PromptsData {
 export function loadPromptSet(id: string): PromptSet {
   const data = promptsData as PromptsData;
   const set = data.promptSets.find((s) => s.id === id);
-  
+
   if (!set) {
     throw new Error(`Prompt set "${id}" not found`);
   }
-  
+
   return set;
 }
 
@@ -51,16 +51,16 @@ export function loadPromptSet(id: string): PromptSet {
  */
 export function getDefaultPromptSetId(): string {
   const data = promptsData as PromptsData;
-  
+
   if (data.promptSets.length === 0) {
     throw new Error("No prompt sets available");
   }
-  
+
   const firstSet = data.promptSets[0];
   if (!firstSet) {
     throw new Error("No prompt sets available");
   }
-  
+
   return firstSet.id;
 }
 
@@ -82,19 +82,19 @@ export function getAllPromptSets(): PromptSet[] {
  */
 export function getPrompt(promptSetId: string, promptIndex: number): Prompt {
   const promptSet = loadPromptSet(promptSetId);
-  
+
   if (promptIndex < 0 || promptIndex >= promptSet.prompts.length) {
     throw new Error(
       `Prompt index ${promptIndex} out of range for set "${promptSetId}" ` +
-      `(total: ${promptSet.prompts.length})`
+        `(total: ${promptSet.prompts.length})`,
     );
   }
-  
+
   const prompt = promptSet.prompts[promptIndex];
   if (!prompt) {
     throw new Error(`Prompt at index ${promptIndex} not found`);
   }
-  
+
   return prompt;
 }
 

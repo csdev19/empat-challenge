@@ -39,6 +39,7 @@ This session focused on implementing the core session link generation feature (F
 **File**: `packages/db/src/enums/therapy-session-status.ts`
 
 Created enum for tracking therapy session status:
+
 - `scheduled` - Session link generated, waiting to start
 - `active` - Session is currently in progress
 - `completed` - Session has ended
@@ -49,6 +50,7 @@ Created enum for tracking therapy session status:
 **File**: `packages/db/src/schema/student.ts`
 
 Table to store student (child) information:
+
 - `id` (uuid, primary key)
 - `name` (text, required)
 - `age` (integer, optional)
@@ -60,6 +62,7 @@ Table to store student (child) information:
 **File**: `packages/db/src/schema/slp.ts`
 
 Table to store Speech Language Pathologist profile information:
+
 - `id` (uuid, primary key)
 - `userId` (text, foreign key to better-auth user table, unique)
 - `name` (text, required)
@@ -71,6 +74,7 @@ Table to store Speech Language Pathologist profile information:
 **File**: `packages/db/src/schema/caseload.ts`
 
 Junction table for many-to-many relationship between SLPs and students:
+
 - `id` (uuid, primary key)
 - `slpId` (text, foreign key to SLP)
 - `studentId` (text, foreign key to Student)
@@ -82,6 +86,7 @@ Junction table for many-to-many relationship between SLPs and students:
 **File**: `packages/db/src/schema/therapy-session.ts`
 
 Table to track video call sessions between SLP and students:
+
 - `id` (uuid, primary key)
 - `slpId` (text, foreign key to SLP)
 - `studentId` (text, foreign key to Student)
@@ -141,6 +146,7 @@ Created utility functions for Daily.co API integration:
 - `generateSessionTokens(roomName, slpName, studentName, expiresIn)` - Generates tokens for both SLP and student
 
 **API Endpoints Used**:
+
 - `POST https://api.daily.co/v1/rooms` - Create room
 - `POST https://api.daily.co/v1/meeting-tokens` - Generate token
 
@@ -149,6 +155,7 @@ Created utility functions for Daily.co API integration:
 **File**: `apps/server/src/utils/env.ts`
 
 Added validation for `DAILY_API_KEY`:
+
 - Required environment variable
 - Validated with Zod schema
 - Used for Daily.co API authentication
@@ -158,6 +165,7 @@ Added validation for `DAILY_API_KEY`:
 **File**: `apps/server/src/routes/students.ts`
 
 Read-only endpoints for managing students:
+
 - `GET /api/v1/students` - List students in SLP's caseload (paginated)
 - `GET /api/v1/students/:id` - Get single student details
 
@@ -168,6 +176,7 @@ Read-only endpoints for managing students:
 **File**: `apps/server/src/routes/therapy-sessions.ts`
 
 Endpoints for session management:
+
 - `POST /api/v1/therapy-sessions/generate-link` - Generate session link
   - Input: `{ studentId: string }`
   - Process:
@@ -198,6 +207,7 @@ Endpoints for session management:
 **File**: `apps/web/src/hooks/use-students.ts`
 
 React Query hooks for student data:
+
 - `useStudents()` - Query hook for listing students in caseload
 - `useStudent(id)` - Query hook for single student details
 
@@ -206,6 +216,7 @@ React Query hooks for student data:
 **File**: `apps/web/src/hooks/use-therapy-sessions.ts`
 
 React Query hooks for session management:
+
 - `useGenerateSessionLink()` - Mutation for generating session link
 - `useTherapySession(id)` - Query hook for single session
 - `useTherapySessions()` - Query hook for listing sessions
@@ -216,6 +227,7 @@ React Query hooks for session management:
 **File**: `apps/web/src/components/caseload/caseload-view.tsx`
 
 Main component for displaying and managing students:
+
 - Displays list of students in SLP's caseload
 - Shows student name, age, and status
 - "Generate Session Link" button for each student
@@ -227,6 +239,7 @@ Main component for displaying and managing students:
 **File**: `apps/web/src/components/therapy-session/generate-link-dialog.tsx`
 
 Modal dialog for displaying generated session link:
+
 - Shows generated link URL
 - Copy to clipboard functionality
 - Displays expiration date
@@ -242,6 +255,7 @@ Protected route that renders the CaseloadView component.
 ### 6. UI Updates
 
 **Files Updated**:
+
 - `apps/web/src/components/header.tsx` - Changed "Hiring Tool" to "Empat Challenge", updated navigation link to `/caseload`
 - `apps/web/src/routes/__root.tsx` - Updated title from "Hiring Tool" to "Empat Challenge"
 - `apps/web/src/routes/index.tsx` - Updated landing page content for therapy platform
@@ -255,17 +269,20 @@ Protected route that renders the CaseloadView component.
 As part of transitioning from the hiring tool to the therapy platform, all hiring-related code was removed:
 
 #### Database Schemas Removed
+
 - `packages/db/src/schema/hiring-process.ts`
 - `packages/db/src/schema/company-details.ts`
 - `packages/db/src/schema/interaction.ts`
 - `packages/db/src/schema/interview.ts`
 
 #### Domain Schemas Removed
+
 - `packages/domain/src/schemas/hiring-process.ts`
 - `packages/domain/src/schemas/company-details.ts`
 - `packages/domain/src/schemas/interaction.ts`
 
 #### Constants and Enums Removed
+
 - `packages/domain/src/constants/hiring-process-status.ts`
 - `packages/domain/src/constants/interaction-type.ts`
 - `packages/domain/src/constants/salary-rate-type.ts`
@@ -276,21 +293,25 @@ As part of transitioning from the hiring tool to the therapy platform, all hirin
 - `packages/db/src/enums/currency.ts`
 
 #### Backend Routes Removed
+
 - `apps/server/src/routes/hiring-processes.ts`
 - `apps/server/src/routes/company-details.ts`
 - `apps/server/src/routes/interactions.ts`
 
 #### Frontend Hooks Removed
+
 - `apps/web/src/hooks/use-hiring-processes.ts`
 - `apps/web/src/hooks/use-company-details.ts`
 - `apps/web/src/hooks/use-interactions.ts`
 - `apps/web/src/hooks/use-interviews.ts`
 
 #### Frontend Components Removed
+
 - `apps/web/src/components/hiring-process/` (entire directory)
 - `apps/web/src/components/interaction/` (entire directory)
 
 #### Frontend Routes Removed
+
 - `apps/web/src/routes/_authenticated/hiring-processes/` (entire directory)
 
 ### Updated References
@@ -326,6 +347,7 @@ When a session link is generated:
 ### API Configuration
 
 **Required Environment Variable**:
+
 ```
 DAILY_API_KEY=your_daily_co_api_key_here
 ```
@@ -364,74 +386,74 @@ sequenceDiagram
 
 ### Database Layer
 
-| File Path | Description |
-|-----------|-------------|
-| `packages/db/src/enums/therapy-session-status.ts` | Therapy session status enum |
-| `packages/db/src/schema/slp.ts` | SLP table schema |
-| `packages/db/src/schema/student.ts` | Student table schema |
-| `packages/db/src/schema/caseload.ts` | Caseload junction table schema |
-| `packages/db/src/schema/therapy-session.ts` | Therapy session table schema |
+| File Path                                         | Description                    |
+| ------------------------------------------------- | ------------------------------ |
+| `packages/db/src/enums/therapy-session-status.ts` | Therapy session status enum    |
+| `packages/db/src/schema/slp.ts`                   | SLP table schema               |
+| `packages/db/src/schema/student.ts`               | Student table schema           |
+| `packages/db/src/schema/caseload.ts`              | Caseload junction table schema |
+| `packages/db/src/schema/therapy-session.ts`       | Therapy session table schema   |
 
 ### Domain Layer
 
-| File Path | Description |
-|-----------|-------------|
+| File Path                                                 | Description                      |
+| --------------------------------------------------------- | -------------------------------- |
 | `packages/domain/src/constants/therapy-session-status.ts` | Therapy session status constants |
-| `packages/domain/src/schemas/slp.ts` | SLP Zod schemas |
-| `packages/domain/src/schemas/student.ts` | Student Zod schemas |
-| `packages/domain/src/schemas/therapy-session.ts` | Therapy session Zod schemas |
+| `packages/domain/src/schemas/slp.ts`                      | SLP Zod schemas                  |
+| `packages/domain/src/schemas/student.ts`                  | Student Zod schemas              |
+| `packages/domain/src/schemas/therapy-session.ts`          | Therapy session Zod schemas      |
 
 ### Backend
 
-| File Path | Description |
-|-----------|-------------|
-| `apps/server/src/utils/daily-client.ts` | Daily.co API client utility |
-| `apps/server/src/routes/students.ts` | Students API routes |
+| File Path                                    | Description                 |
+| -------------------------------------------- | --------------------------- |
+| `apps/server/src/utils/daily-client.ts`      | Daily.co API client utility |
+| `apps/server/src/routes/students.ts`         | Students API routes         |
 | `apps/server/src/routes/therapy-sessions.ts` | Therapy sessions API routes |
 
 ### Frontend
 
-| File Path | Description |
-|-----------|-------------|
-| `apps/web/src/hooks/use-students.ts` | Students React Query hooks |
-| `apps/web/src/hooks/use-therapy-sessions.ts` | Therapy sessions React Query hooks |
-| `apps/web/src/components/caseload/caseload-view.tsx` | Caseload view component |
-| `apps/web/src/components/therapy-session/generate-link-dialog.tsx` | Generate link dialog component |
-| `apps/web/src/routes/_authenticated/caseload/index.tsx` | Caseload route page |
+| File Path                                                          | Description                        |
+| ------------------------------------------------------------------ | ---------------------------------- |
+| `apps/web/src/hooks/use-students.ts`                               | Students React Query hooks         |
+| `apps/web/src/hooks/use-therapy-sessions.ts`                       | Therapy sessions React Query hooks |
+| `apps/web/src/components/caseload/caseload-view.tsx`               | Caseload view component            |
+| `apps/web/src/components/therapy-session/generate-link-dialog.tsx` | Generate link dialog component     |
+| `apps/web/src/routes/_authenticated/caseload/index.tsx`            | Caseload route page                |
 
 ## Files Modified
 
 ### Database Layer
 
-| File Path | Changes |
-|-----------|---------|
-| `packages/db/src/schema/index.ts` | Added exports for new schemas, removed hiring-related exports |
-| `packages/db/src/enums/index.ts` | Added therapy-session-status export, removed hiring-related exports |
-| `packages/db/src/schema/auth.ts` | Removed interview table relation reference |
+| File Path                         | Changes                                                             |
+| --------------------------------- | ------------------------------------------------------------------- |
+| `packages/db/src/schema/index.ts` | Added exports for new schemas, removed hiring-related exports       |
+| `packages/db/src/enums/index.ts`  | Added therapy-session-status export, removed hiring-related exports |
+| `packages/db/src/schema/auth.ts`  | Removed interview table relation reference                          |
 
 ### Domain Layer
 
-| File Path | Changes |
-|-----------|---------|
+| File Path                                | Changes                                                             |
+| ---------------------------------------- | ------------------------------------------------------------------- |
 | `packages/domain/src/constants/index.ts` | Added therapy-session-status export, removed hiring-related exports |
-| `packages/domain/src/schemas/index.ts` | Added new schema exports, removed hiring-related exports |
+| `packages/domain/src/schemas/index.ts`   | Added new schema exports, removed hiring-related exports            |
 
 ### Backend
 
-| File Path | Changes |
-|-----------|---------|
-| `apps/server/src/utils/env.ts` | Added `DAILY_API_KEY` validation |
-| `apps/server/src/index.ts` | Added student and therapy-session routes, removed hiring-related routes |
+| File Path                      | Changes                                                                 |
+| ------------------------------ | ----------------------------------------------------------------------- |
+| `apps/server/src/utils/env.ts` | Added `DAILY_API_KEY` validation                                        |
+| `apps/server/src/index.ts`     | Added student and therapy-session routes, removed hiring-related routes |
 
 ### Frontend
 
-| File Path | Changes |
-|-----------|---------|
-| `apps/web/src/components/header.tsx` | Updated branding and navigation link |
-| `apps/web/src/routes/__root.tsx` | Updated page title |
-| `apps/web/src/routes/index.tsx` | Updated landing page content for therapy platform |
-| `apps/web/src/components/sign-up-form.tsx` | Updated redirect destination |
-| `apps/web/src/components/sign-in-form.tsx` | Updated redirect destination |
+| File Path                                  | Changes                                           |
+| ------------------------------------------ | ------------------------------------------------- |
+| `apps/web/src/components/header.tsx`       | Updated branding and navigation link              |
+| `apps/web/src/routes/__root.tsx`           | Updated page title                                |
+| `apps/web/src/routes/index.tsx`            | Updated landing page content for therapy platform |
+| `apps/web/src/components/sign-up-form.tsx` | Updated redirect destination                      |
+| `apps/web/src/components/sign-in-form.tsx` | Updated redirect destination                      |
 
 ## Files Deleted
 
@@ -490,7 +512,8 @@ Add to `.env` file or Railway environment variables:
 DAILY_API_KEY=your_daily_co_api_key_here
 ```
 
-**Where to get the API key**: 
+**Where to get the API key**:
+
 1. Log in to [Daily.co Dashboard](https://dashboard.daily.co/)
 2. Navigate to Developers section
 3. Copy your domain API key

@@ -17,9 +17,11 @@ export function useValidateSessionLink(linkToken: string) {
   return useQuery({
     queryKey: sessionLinkKeys.validation(linkToken),
     queryFn: async (): Promise<SessionLinkValidationResponse> => {
-      const result = await clientTreaty.api.v1["session-link"]["validate"]({
-        linkToken,
-      }).get();
+      const result = await clientTreaty.api.v1["session-link"]
+        ["validate"]({
+          linkToken,
+        })
+        .get();
 
       if (result.error) {
         throw new Error(getErrorMessage(result.error));

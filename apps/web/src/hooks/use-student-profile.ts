@@ -8,11 +8,7 @@ import type {
 } from "@empat-challenge/domain/schemas";
 
 // Re-export types from domain package
-export type {
-  StudentBase,
-  CreateStudentProfile,
-  UpdateStudentProfile,
-};
+export type { StudentBase, CreateStudentProfile, UpdateStudentProfile };
 
 // Query keys
 const studentProfileKeys = {

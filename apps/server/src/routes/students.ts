@@ -1,10 +1,6 @@
 import { Elysia, t } from "elysia";
 import { createDatabaseClient } from "@empat-challenge/db/client";
-import {
-  studentTable,
-  caseloadTable,
-  slpTable,
-} from "@empat-challenge/db/schemas";
+import { studentTable, caseloadTable, slpTable } from "@empat-challenge/db/schemas";
 import {
   paginationQuerySchema,
   addStudentsToCaseloadSchema,
@@ -157,12 +153,7 @@ export const studentRoutes = new Elysia({ prefix: "/students" })
       const existingCaseloads = await db
         .select({ studentId: caseloadTable.studentId })
         .from(caseloadTable)
-        .where(
-          and(
-            eq(caseloadTable.slpId, slp.id),
-            isNull(caseloadTable.deletedAt),
-          ),
-        );
+        .where(and(eq(caseloadTable.slpId, slp.id), isNull(caseloadTable.deletedAt)));
 
       const existingStudentIds = existingCaseloads.map((c) => c.studentId);
 

@@ -82,12 +82,14 @@ graph TB
 **Definition**: SLP can generate unique, shareable links for therapy sessions. Each link is tied to a specific student and session instance.
 
 **Scope**:
+
 - Generate unique session links with embedded session ID and student ID
 - Links can be time-limited or single-use (configurable)
 - No scheduling system needed - links are generated on-demand
 - Links stored in database with metadata (created date, expiration, usage status)
 
 **User Flow**:
+
 1. SLP selects a student from their caseload
 2. SLP clicks "Generate Session Link"
 3. System creates a new session record and generates a unique link
@@ -99,6 +101,7 @@ graph TB
 **Definition**: Simple video call interface using Daily.co WebRTC. Both SLP and student join via the session link.
 
 **Scope**:
+
 - Daily.co room creation per session (automatic when link is generated)
 - WebRTC video/audio connection for both participants
 - Basic controls (mute, video toggle, screen share)
@@ -106,6 +109,7 @@ graph TB
 - Room cleanup after session completion
 
 **User Flow**:
+
 1. Student clicks session link
 2. System validates link and creates Daily.co room if needed
 3. Both participants join the video call
@@ -117,6 +121,7 @@ graph TB
 **Definition**: Turn-based interactive game built with Phaser.js, synchronized via WebSockets. Both participants can play during the session.
 
 **Scope**:
+
 - One basic game (communication/language/speech theme)
 - WebSocket synchronization for real-time game state
 - Turn-based gameplay (SLP and student alternate turns)
@@ -124,6 +129,7 @@ graph TB
 - Game results can be used for trial tracking
 
 **User Flow**:
+
 1. During video call, SLP initiates a game session
 2. Game loads in embedded iframe or overlay
 3. Participants take turns playing
@@ -135,6 +141,7 @@ graph TB
 **Definition**: SLP records trial data (correct/incorrect) and behavioral notes during the session.
 
 **Scope**:
+
 - Real-time trial tracking (correct/incorrect buttons)
 - Automatic percentage correct calculation
 - Behavioral/subjective notes input (text area)
@@ -142,6 +149,7 @@ graph TB
 - Data linked to specific session and student
 
 **User Flow**:
+
 1. During session, SLP records each trial (correct/incorrect)
 2. System calculates running percentage
 3. SLP adds behavioral notes as needed
@@ -153,6 +161,7 @@ graph TB
 **Definition**: SLP view showing individual student progress across sessions with visual charts/graphs.
 
 **Scope**:
+
 - Progress metrics (total sessions, total trials, accuracy trends over time)
 - Visual charts (line graphs for accuracy trends, progress bars for completion)
 - Recent session summaries (last 3 sessions with key metrics)
@@ -160,6 +169,7 @@ graph TB
 - Filter by date range or session type
 
 **User Flow**:
+
 1. SLP navigates to caseload view
 2. SLP clicks on a student
 3. Student profile page loads with progress visualization
@@ -171,6 +181,7 @@ graph TB
 **Definition**: SLP dashboard showing all students with their overall metrics in a list/table format.
 
 **Scope**:
+
 - List of all students in SLP's caseload
 - Quick metrics per student (sessions count, average accuracy, last session date)
 - Click-through to individual student profiles
@@ -178,6 +189,7 @@ graph TB
 - Quick actions (generate session link, view profile)
 
 **User Flow**:
+
 1. SLP logs in and lands on caseload view
 2. Sees list of all their students with key metrics
 3. Can filter or sort the list
@@ -189,6 +201,7 @@ graph TB
 **Definition**: End-of-session AI-generated summary using LLM API. Display recent 3 summaries on student profile.
 
 **Scope**:
+
 - Scaffold API endpoint for LLM integration (OpenAI, Anthropic, etc.)
 - Summary generation trigger (post-session completion)
 - Storage of summaries in database
@@ -196,6 +209,7 @@ graph TB
 - Summary includes: key achievements, areas for improvement, recommendations
 
 **User Flow**:
+
 1. Session ends and data is recorded
 2. System triggers AI summary generation (scaffolded - not fully implemented)
 3. Summary stored in database linked to session
@@ -214,15 +228,15 @@ graph TB
 
 ## Features Summary Table
 
-| Feature ID | Feature Name | Description | Priority | Status | Dependencies | User Role |
-|------------|--------------|-------------|----------|--------|--------------|-----------|
-| F1 | Session Link Generation | Generate unique, shareable links for therapy sessions | Core | To implement | Database, Authentication | SLP |
-| F2 | Video Call Sessions | WebRTC video call interface using Daily.co | Core | To implement | Daily.co API, Session Link (F1) | Both |
-| F3 | Interactive Phaser Game | Turn-based game synchronized via WebSockets | Core | To implement | WebSocket Server, Session Link (F1) | Both |
-| F4 | Session Data Recording | Record trial data and behavioral notes | Core | To implement | Session Link (F1), Database | SLP |
-| F5 | Student Profile with Progress | Visual progress tracking for individual students | Important | To implement | Session Data Recording (F4), Database | SLP |
-| F6 | Caseload View | Dashboard showing all students with metrics | Core | To implement | Student Profile (F5), Database | SLP |
-| F7 | AI Session Summary | AI-generated session summaries | Nice-to-have | Scaffolded | Session Data Recording (F4), LLM API | SLP |
+| Feature ID | Feature Name                  | Description                                           | Priority     | Status       | Dependencies                          | User Role |
+| ---------- | ----------------------------- | ----------------------------------------------------- | ------------ | ------------ | ------------------------------------- | --------- |
+| F1         | Session Link Generation       | Generate unique, shareable links for therapy sessions | Core         | To implement | Database, Authentication              | SLP       |
+| F2         | Video Call Sessions           | WebRTC video call interface using Daily.co            | Core         | To implement | Daily.co API, Session Link (F1)       | Both      |
+| F3         | Interactive Phaser Game       | Turn-based game synchronized via WebSockets           | Core         | To implement | WebSocket Server, Session Link (F1)   | Both      |
+| F4         | Session Data Recording        | Record trial data and behavioral notes                | Core         | To implement | Session Link (F1), Database           | SLP       |
+| F5         | Student Profile with Progress | Visual progress tracking for individual students      | Important    | To implement | Session Data Recording (F4), Database | SLP       |
+| F6         | Caseload View                 | Dashboard showing all students with metrics           | Core         | To implement | Student Profile (F5), Database        | SLP       |
+| F7         | AI Session Summary            | AI-generated session summaries                        | Nice-to-have | Scaffolded   | Session Data Recording (F4), LLM API  | SLP       |
 
 ## Detailed Summary for AI Think-Process
 
@@ -231,11 +245,13 @@ graph TB
 The initial architecture (V1) included a parent/guardian model where parents managed multiple students. Based on feedback, this was simplified to focus on the core therapy delivery workflow:
 
 **Key Simplifications**:
+
 - **Removed parent/guardian complexity**: Students are now directly linked to SLPs via the caseload relationship. This eliminates the need for parent authentication, parent dashboards, and the parent-student relationship management.
 - **Link-based sessions**: Instead of a scheduling system, SLPs generate on-demand session links. This is simpler to implement and covers the core use case effectively.
 - **Minimal roles**: Only two user types - SLP and Student. Students access sessions via links without needing a full dashboard.
 
 **Why These Changes**:
+
 - Faster development and deployment within the 7-day timeline
 - Focus on core therapy delivery features
 - Reduced complexity in authentication and authorization
@@ -280,6 +296,7 @@ The initial architecture (V1) included a parent/guardian model where parents man
    - Displayed on student profile
 
 **Relationships**:
+
 ```
 SLP (1) ←→ (Many) Caseload (Many) ←→ (1) Student
 SLP (1) ←→ (Many) Therapy Session
@@ -329,24 +346,28 @@ Therapy Session (1) ←→ (1) AI Session Summary
 ### Technical Decisions
 
 **Why Link-Based Sessions**:
+
 - Simpler than building a scheduling system
 - Covers the core use case (SLP needs to conduct sessions with students)
 - Links can be shared via any channel (email, SMS, messaging apps)
 - No need for calendar integration or timezone handling
 
 **Why Direct SLP-Student Relationship**:
+
 - Removes parent/guardian authentication complexity
 - Simplifies authorization (SLP owns caseload, can access their students)
 - Faster to implement and test
 - Still allows for future expansion if needed
 
 **Why Scaffold AI Summaries**:
+
 - LLM integration is complex and time-consuming
 - Demonstrates understanding of the requirement
 - Provides clear extension point for future implementation
 - Focuses development time on core features
 
 **Why PostgreSQL (Not NoSQL)**:
+
 - Already using Drizzle ORM which works well with PostgreSQL
 - Relational data fits the model (SLPs, Students, Sessions, etc.)
 - Better for complex queries (progress tracking, aggregations)
@@ -355,30 +376,35 @@ Therapy Session (1) ←→ (1) AI Session Summary
 ### Implementation Priorities
 
 **Phase 1: Core Infrastructure** (Days 1-2)
+
 - Database schema setup (simplified from V1)
 - Authentication (better-auth for SLP only)
 - Basic API structure (Elysia routes)
 - SLP dashboard shell
 
 **Phase 2: Session Management** (Days 2-3)
+
 - Session link generation
 - Daily.co integration
 - Video call interface
 - Session status tracking
 
 **Phase 3: Therapy Features** (Days 3-5)
+
 - Phaser game implementation
 - WebSocket synchronization
 - Session data recording
 - Trial tracking UI
 
 **Phase 4: Progress Tracking** (Days 5-6)
+
 - Student profile page
 - Progress visualization (charts)
 - Caseload view
 - Data aggregation queries
 
 **Phase 5: Polish & Deployment** (Days 6-7)
+
 - AI summary scaffolding
 - UI polish
 - Testing
@@ -395,21 +421,25 @@ Therapy Session (1) ←→ (1) AI Session Summary
 ### Database Schema Changes from V1
 
 **Student Table Changes**:
+
 - **Removed**: `parentUserId` (foreign key to parent/guardian)
 - **Added**: Direct relationship via `Caseload` table (many-to-many with SLP)
 - **Simplified**: No parent account needed
 
 **New/Modified Tables**:
+
 - **Session Link Table** (new): Stores generated links with metadata
   - `id`, `sessionId`, `linkToken`, `expiresAt`, `usedAt`, `isActive`
 - **Simplified Student-SLP relationship**: Via `Caseload` junction table only
 
 **Removed Concepts**:
+
 - Parent/Guardian table (not needed)
 - Parent dashboard (not in scope)
 - Student authentication complexity (link-based access only)
 
 **Retained from V1**:
+
 - SLP table structure
 - Therapy Session table
 - Session Data Recording table
@@ -426,4 +456,3 @@ Therapy Session (1) ←→ (1) AI Session Summary
 6. **WebSocket Setup**: Implement game state synchronization
 7. **Testing Strategy**: Unit tests for core logic, integration tests for API
 8. **Deployment**: Railway setup for backend, Vercel/Cloudflare for frontend
-

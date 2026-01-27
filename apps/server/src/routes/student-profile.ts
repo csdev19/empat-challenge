@@ -131,11 +131,7 @@ export const studentProfileRoutes = new Elysia({ prefix: "/student-profile" })
       }
 
       const updateResult = await tryCatch(
-        db
-          .update(studentTable)
-          .set(updateData)
-          .where(eq(studentTable.id, student.id))
-          .returning(),
+        db.update(studentTable).set(updateData).where(eq(studentTable.id, student.id)).returning(),
       );
 
       const updated = handleDatabaseResult(updateResult, "Failed to update student profile");

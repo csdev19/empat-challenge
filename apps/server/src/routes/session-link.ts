@@ -1,10 +1,6 @@
 import { Elysia, t } from "elysia";
 import { createDatabaseClient } from "@empat-challenge/db/client";
-import {
-  therapySessionTable,
-  studentTable,
-  slpTable,
-} from "@empat-challenge/db/schemas";
+import { therapySessionTable, studentTable, slpTable } from "@empat-challenge/db/schemas";
 import { sessionLinkValidationResponseSchema } from "@empat-challenge/domain/schemas";
 import { eq, and, isNull, sql } from "drizzle-orm";
 import { NotFoundError, BadRequestError } from "../utils/errors";
@@ -59,9 +55,7 @@ export const sessionLinkRoutes = new Elysia({ prefix: "/session-link" })
         session.status !== THERAPY_SESSION_STATUSES.SCHEDULED &&
         session.status !== THERAPY_SESSION_STATUSES.ACTIVE
       ) {
-        throw new BadRequestError(
-          `Session is ${session.status} and cannot be joined`,
-        );
+        throw new BadRequestError(`Session is ${session.status} and cannot be joined`);
       }
 
       // Get student and SLP names
@@ -122,17 +116,20 @@ export const sessionLinkRoutes = new Elysia({ prefix: "/session-link" })
         tokenLength: studentToken.length,
       });
 
-      return status(200, successBody({
-        sessionId: session.id,
-        studentId: session.studentId,
-        studentName: student.name,
-        slpId: session.slpId,
-        slpName: slp.name,
-        dailyRoomUrl: session.dailyRoomUrl,
-        studentToken, // This needs to be retrieved from storage or regenerated
-        status: session.status,
-        expiresAt: session.expiresAt,
-      }));
+      return status(
+        200,
+        successBody({
+          sessionId: session.id,
+          studentId: session.studentId,
+          studentName: student.name,
+          slpId: session.slpId,
+          slpName: slp.name,
+          dailyRoomUrl: session.dailyRoomUrl,
+          studentToken, // This needs to be retrieved from storage or regenerated
+          status: session.status,
+          expiresAt: session.expiresAt,
+        }),
+      );
     },
     {
       params: t.Object({

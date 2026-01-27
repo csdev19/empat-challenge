@@ -275,7 +275,9 @@ export const therapySessionRoutes = new Elysia({ prefix: "/therapy-sessions" })
         console.error("[therapy-sessions/student] Student profile not found", {
           userId: user.id,
         });
-        throw new NotFoundError("Student profile not found. Please create your student profile first.");
+        throw new NotFoundError(
+          "Student profile not found. Please create your student profile first.",
+        );
       }
 
       console.log("[therapy-sessions/student] Student found", {
@@ -288,10 +290,7 @@ export const therapySessionRoutes = new Elysia({ prefix: "/therapy-sessions" })
         .select()
         .from(therapySessionTable)
         .where(
-          and(
-            eq(therapySessionTable.studentId, student.id),
-            isNull(therapySessionTable.deletedAt),
-          ),
+          and(eq(therapySessionTable.studentId, student.id), isNull(therapySessionTable.deletedAt)),
         )
         .orderBy(desc(therapySessionTable.createdAt))
         .limit(pagination.limit)
@@ -311,10 +310,7 @@ export const therapySessionRoutes = new Elysia({ prefix: "/therapy-sessions" })
         .select({ count: sql<number>`count(*)` })
         .from(therapySessionTable)
         .where(
-          and(
-            eq(therapySessionTable.studentId, student.id),
-            isNull(therapySessionTable.deletedAt),
-          ),
+          and(eq(therapySessionTable.studentId, student.id), isNull(therapySessionTable.deletedAt)),
         );
 
       const total = countResult[0] ? Number(countResult[0].count) : 0;

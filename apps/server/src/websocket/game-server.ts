@@ -27,18 +27,19 @@ export async function handleGameWebSocket(request: Request): Promise<Response> {
   try {
     console.log("[GameServer] WebSocket upgrade request received");
     console.log("[GameServer] Request URL:", request.url);
-    
+
     // Extract session ID from URL path
     const url = new URL(request.url);
     console.log("[GameServer] Parsed URL pathname:", url.pathname);
     const pathParts = url.pathname.split("/").filter((part) => part.length > 0);
     console.log("[GameServer] Path parts:", pathParts);
-    
+
     // Find sessionId - it should be after "/ws/game/"
     const gameIndex = pathParts.indexOf("game");
-    const sessionId = gameIndex >= 0 && gameIndex < pathParts.length - 1 
-      ? pathParts[gameIndex + 1] 
-      : pathParts[pathParts.length - 1];
+    const sessionId =
+      gameIndex >= 0 && gameIndex < pathParts.length - 1
+        ? pathParts[gameIndex + 1]
+        : pathParts[pathParts.length - 1];
 
     console.log("[GameServer] Extracted sessionId:", sessionId);
 
@@ -65,29 +66,22 @@ export async function handleGameWebSocket(request: Request): Promise<Response> {
     }
 
     // Validate token and get user
-    console.log(
-      `[GameServer] WebSocket upgrade attempt: role=${role}, sessionId=${sessionId}`,
-    );
+    console.log(`[GameServer] WebSocket upgrade attempt: role=${role}, sessionId=${sessionId}`);
 
     // ============================================
     // SIMPLIFIED VALIDATION (PUBLIC - NO SECURITY)
     // Bypassing all security checks for development
     // ============================================
-    
+
     let userId: string;
-    
+
     if (role === "student") {
       console.log("[GameServer] Student connection (public mode - no validation)");
       // Just verify session exists (optional check)
       const [session] = await db
         .select()
         .from(therapySessionTable)
-        .where(
-          and(
-            eq(therapySessionTable.id, sessionId),
-            isNull(therapySessionTable.deletedAt),
-          ),
-        )
+        .where(and(eq(therapySessionTable.id, sessionId), isNull(therapySessionTable.deletedAt)))
         .limit(1);
 
       if (!session) {
@@ -98,7 +92,7 @@ export async function handleGameWebSocket(request: Request): Promise<Response> {
       console.log("[GameServer] Student connected (public mode)");
     } else if (role === "slp") {
       console.log("[GameServer] SLP connection (public mode - no validation)");
-      
+
       // Try to get user from auth session if available, but don't require it
       let slpUserId: string | null = null;
       try {
@@ -165,8 +159,14 @@ export async function handleGameWebSocket(request: Request): Promise<Response> {
         }
       } catch (error) {
         console.error("[GameServer] WebSocket upgrade error:", error);
-        console.error("[GameServer] Upgrade error stack:", error instanceof Error ? error.stack : "No stack");
-        return new Response(`WebSocket upgrade failed: ${error instanceof Error ? error.message : String(error)}`, { status: 500 });
+        console.error(
+          "[GameServer] Upgrade error stack:",
+          error instanceof Error ? error.stack : "No stack",
+        );
+        return new Response(
+          `WebSocket upgrade failed: ${error instanceof Error ? error.message : String(error)}`,
+          { status: 500 },
+        );
       }
     } else {
       console.error("[GameServer] Bun or Bun.upgrade not available");
@@ -176,7 +176,10 @@ export async function handleGameWebSocket(request: Request): Promise<Response> {
   } catch (error) {
     console.error("[GameServer] Error handling WebSocket:", error);
     console.error("[GameServer] Error stack:", error instanceof Error ? error.stack : "No stack");
-    return new Response(`Internal server error: ${error instanceof Error ? error.message : String(error)}`, { status: 500 });
+    return new Response(
+      `Internal server error: ${error instanceof Error ? error.message : String(error)}`,
+      { status: 500 },
+    );
   }
 }
 

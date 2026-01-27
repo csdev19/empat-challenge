@@ -1,7 +1,9 @@
 # Authentication Structure for SLP Session Access
 
 ## Problem
+
 The `join-info` endpoint returns `slpToken` only if:
+
 1. User is authenticated (has valid session cookie)
 2. User has an SLP profile
 3. SLP profile ID matches the session's SLP ID
@@ -9,6 +11,7 @@ The `join-info` endpoint returns `slpToken` only if:
 ## Expected JSON Structures
 
 ### 1. User Object (from better-auth session)
+
 ```json
 {
   "id": "user-uuid-here",
@@ -23,6 +26,7 @@ The `join-info` endpoint returns `slpToken` only if:
 **Key Field**: `id` - This is the user ID that links to the SLP profile
 
 ### 2. SLP Profile (from database)
+
 ```json
 {
   "id": "slp-uuid-here",
@@ -36,11 +40,13 @@ The `join-info` endpoint returns `slpToken` only if:
 ```
 
 **Key Fields**:
+
 - `id` - SLP profile ID (must match `session.slpId`)
 - `userId` - MUST match the authenticated user's `id`
 - `deletedAt` - MUST be `null` (not soft-deleted)
 
 ### 3. Therapy Session (from database)
+
 ```json
 {
   "id": "session-uuid-here",
@@ -75,7 +81,9 @@ Authenticated User (user.id)
 ## How to Verify Your Setup
 
 ### Check 1: User Authentication
+
 Open browser console and check:
+
 ```javascript
 // Check if you have auth cookies
 document.cookie
@@ -83,6 +91,7 @@ document.cookie
 ```
 
 ### Check 2: Database Verification
+
 Run these queries to verify the relationship:
 
 ```sql
@@ -90,8 +99,8 @@ Run these queries to verify the relationship:
 SELECT id, email FROM "user" WHERE email = 'your-email@example.com';
 
 -- 2. Check if you have an SLP profile
-SELECT id, "userId", name, "deletedAt" 
-FROM slp 
+SELECT id, "userId", name, "deletedAt"
+FROM slp
 WHERE "userId" = 'your-user-id-from-step-1';
 
 -- 3. Check the session's SLP ID
@@ -104,26 +113,33 @@ WHERE id = 'your-session-id' OR "linkToken" = 'your-link-token';
 ```
 
 ### Check 3: API Request Headers
+
 The request to `/api/v1/therapy-sessions/:id/join-info` must include:
+
 - `Cookie` header with session cookies
 - `credentials: "include"` in fetch options (already set in client-treaty)
 
 ## Common Issues
 
 ### Issue 1: "User not authenticated"
+
 **Cause**: Session cookie not being sent with request
-**Fix**: 
+**Fix**:
+
 - Ensure you're logged in
 - Check browser cookies for session cookies
 - Verify `credentials: "include"` is set (it is in client-treaty.ts)
 
 ### Issue 2: "User has no SLP profile"
+
 **Cause**: No SLP profile exists for your user ID
 **Fix**: Create SLP profile via `/api/v1/slp` POST endpoint
 
 ### Issue 3: "SLP ID doesn't match"
+
 **Cause**: Your SLP profile ID doesn't match the session's `slpId`
-**Fix**: 
+**Fix**:
+
 - Verify you're accessing a session you created
 - Check that `slp.id === session.slpId` in database
 

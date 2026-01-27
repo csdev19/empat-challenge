@@ -67,6 +67,7 @@ The `WordPictureMatchGame` component is a React wrapper that:
 5. **Cleanup**: Properly disconnects WebSocket and destroys game on unmount
 
 **Key Features**:
+
 - Loading states during connection and initialization
 - Error handling with user-friendly messages
 - Automatic cleanup on component unmount
@@ -94,6 +95,7 @@ The `GameWebSocketClient` class provides:
    - Token handling: "cookie" for SLP, linkToken for students
 
 **Connection Flow**:
+
 1. Client connects to `ws://host/ws/game/{sessionId}?token={token}&role={role}`
 2. On connection, sends `join-game` message
 3. Receives `game-state` message with current game state
@@ -128,6 +130,7 @@ The WebSocket endpoint is registered using Elysia's `.ws()` method:
 ```
 
 **Authentication**:
+
 - **SLP**: Validates session from cookies (token can be "cookie" or empty)
 - **Student**: Validates linkToken from query parameter
 - Verifies session ownership and access
@@ -147,6 +150,7 @@ The `handleGameWebSocket` function (legacy, now handled by Elysia `.ws()`) perfo
 5. **WebSocket upgrade**: Uses Bun's native WebSocket upgrade
 
 **Message Handlers**:
+
 - `handleWebSocketMessage`: Routes messages to game room
 - `handleWebSocketClose`: Removes player from room and cleans up
 
@@ -211,12 +215,14 @@ The `GameRoom` class manages the game state and logic:
 #### Database Integration
 
 **Game Output Record**:
+
 - Created when game initializes
 - Updated with final scores, accuracy, duration on completion
 - Stores full game state as JSONB
 - Links to therapy session via `therapySessionId`
 
 **Trial Data Recording**:
+
 - Each match attempt creates a trial record
 - Records correct/incorrect status
 - Links to therapy session
@@ -232,33 +238,33 @@ interface GameState {
   gameId: string;                    // UUID
   therapySessionId: string;         // Links to session
   gameType: "word-picture-match";
-  
+
   // Status
   status: "waiting" | "playing" | "paused" | "completed";
-  
+
   // Turn management
   currentPlayer: "slp" | "student";
   turnsPlayed: number;
-  
+
   // Cards
   cardSetId: string;
   cards: CardState[];
   flippedCards: string[];            // Max 2 card IDs
-  
+
   // Matches
   matches: Match[];
-  
+
   // Scoring
   score: {
     slp: { matches: number; attempts: number; accuracy: number };
     student: { matches: number; attempts: number; accuracy: number };
   };
-  
+
   // Timing
   startedAt: string | null;          // ISO timestamp
   completedAt: string | null;         // ISO timestamp
   lastActivityAt: string;             // ISO timestamp
-  
+
   // Metadata
   metadata?: {
     difficulty?: string;
@@ -287,6 +293,7 @@ interface CardState {
 ### Client → Server Messages
 
 #### Join Game
+
 ```typescript
 {
   type: "join-game",
@@ -299,6 +306,7 @@ interface CardState {
 ```
 
 #### Flip Card
+
 ```typescript
 {
   type: "flip-card",
@@ -311,6 +319,7 @@ interface CardState {
 ```
 
 #### Check Match
+
 ```typescript
 {
   type: "check-match",
@@ -324,6 +333,7 @@ interface CardState {
 ```
 
 #### End Turn
+
 ```typescript
 {
   type: "end-turn",
@@ -334,6 +344,7 @@ interface CardState {
 ```
 
 #### Pause Game (SLP only)
+
 ```typescript
 {
   type: "pause-game",
@@ -344,6 +355,7 @@ interface CardState {
 ```
 
 #### Resume Game (SLP only)
+
 ```typescript
 {
   type: "resume-game",
@@ -354,6 +366,7 @@ interface CardState {
 ```
 
 #### End Game (SLP only)
+
 ```typescript
 {
   type: "end-game",
@@ -366,6 +379,7 @@ interface CardState {
 ### Server → Client Messages
 
 #### Game State
+
 ```typescript
 {
   type: "game-state",
@@ -375,6 +389,7 @@ interface CardState {
 ```
 
 #### Card Flipped
+
 ```typescript
 {
   type: "card-flipped",
@@ -387,6 +402,7 @@ interface CardState {
 ```
 
 #### Match Result
+
 ```typescript
 {
   type: "match-result",
@@ -405,6 +421,7 @@ interface CardState {
 ```
 
 #### Turn Changed
+
 ```typescript
 {
   type: "turn-changed",
@@ -417,6 +434,7 @@ interface CardState {
 ```
 
 #### Game Completed
+
 ```typescript
 {
   type: "game-completed",
@@ -433,6 +451,7 @@ interface CardState {
 ```
 
 #### Game Paused
+
 ```typescript
 {
   type: "game-paused",
@@ -442,6 +461,7 @@ interface CardState {
 ```
 
 #### Game Resumed
+
 ```typescript
 {
   type: "game-resumed",
@@ -451,6 +471,7 @@ interface CardState {
 ```
 
 #### Error
+
 ```typescript
 {
   type: "error",
@@ -486,10 +507,12 @@ interface CardState {
 ### Game Completion
 
 Game completes when:
+
 - All cards are matched
 - SLP manually ends the game
 
 On completion:
+
 - Final scores calculated
 - Winner determined (or tie)
 - Duration calculated
@@ -585,6 +608,7 @@ Records individual match attempts:
 Currently uses a hardcoded default card set:
 
 **Default Set**: "Basic Animals" (Easy)
+
 - Cat (word + picture)
 - Dog (word + picture)
 - Bird (word + picture)
@@ -644,6 +668,7 @@ Currently uses a hardcoded default card set:
 ## Files Changed
 
 ### Frontend
+
 - `apps/web/src/components/game/word-picture-match/game-container.tsx`
 - `apps/web/src/components/game/word-picture-match/websocket-client.ts`
 - `apps/web/src/components/game/word-picture-match/game-scene.ts`
@@ -651,14 +676,17 @@ Currently uses a hardcoded default card set:
 - `apps/web/src/components/game/word-picture-match/game-config.ts`
 
 ### Backend
+
 - `apps/server/src/index.ts` (WebSocket route)
 - `apps/server/src/websocket/game-server.ts`
 - `apps/server/src/websocket/game-room.ts`
 
 ### Domain Types
+
 - `packages/domain/src/types/game-state.ts`
 - `packages/domain/src/types/game-messages.ts`
 
 ### Database
+
 - `packages/db/src/schema/game-output.ts`
 - `packages/db/src/schema/trial-data.ts`

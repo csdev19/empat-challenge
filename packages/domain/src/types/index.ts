@@ -18,13 +18,7 @@ export type {
 } from "./api-response";
 
 // Export Game types
-export type {
-  GameStatus,
-  PlayerRole,
-  Option,
-  Prompt,
-  GameState,
-} from "./game-state";
+export type { GameStatus, PlayerRole, Option, Prompt, GameState } from "./game-state";
 
 export type {
   GameMessage,

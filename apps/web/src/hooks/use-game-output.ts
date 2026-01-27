@@ -8,18 +8,13 @@ import type {
 } from "@empat-challenge/domain/schemas";
 
 // Re-export types from domain package
-export type {
-  GameOutputBase,
-  CreateGameOutput,
-  UpdateGameOutput,
-};
+export type { GameOutputBase, CreateGameOutput, UpdateGameOutput };
 
 // Query keys
 const gameOutputKeys = {
   all: ["gameOutput"] as const,
   lists: () => [...gameOutputKeys.all, "list"] as const,
-  list: (therapySessionId: string) =>
-    [...gameOutputKeys.lists(), therapySessionId] as const,
+  list: (therapySessionId: string) => [...gameOutputKeys.lists(), therapySessionId] as const,
   details: () => [...gameOutputKeys.all, "detail"] as const,
   detail: (id: string) => [...gameOutputKeys.details(), id] as const,
 };
@@ -103,15 +98,8 @@ export function useCreateGameOutput() {
 export function useUpdateGameOutput() {
   const queryClient = useQueryClient();
 
-  return useMutation<
-    GameOutputBase,
-    Error,
-    { id: string; data: UpdateGameOutput }
-  >({
-    mutationFn: async ({
-      id,
-      data,
-    }): Promise<GameOutputBase> => {
+  return useMutation<GameOutputBase, Error, { id: string; data: UpdateGameOutput }>({
+    mutationFn: async ({ id, data }): Promise<GameOutputBase> => {
       const result = await clientTreaty.api.v1["game-output"]({ id }).put(data);
       if (result.error) {
         throw new Error(getErrorMessage(result.error));

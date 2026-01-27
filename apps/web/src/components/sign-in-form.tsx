@@ -30,14 +30,14 @@ export default function SignInForm() {
           onSuccess: async () => {
             // Invalidate and refetch session to ensure it's up to date
             queryClient.invalidateQueries({ queryKey: sessionKeys.all });
-            
+
             // Wait for session to be available
             const sessionData = await authClient.getSession();
-            
+
             if (sessionData.data) {
               // Update session in query cache
               queryClient.setQueryData(sessionKeys.session(), sessionData.data);
-              
+
               // Navigate to caseload
               navigate({
                 to: "/caseload",

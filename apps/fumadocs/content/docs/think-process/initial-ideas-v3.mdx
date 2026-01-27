@@ -44,6 +44,7 @@ Based on the [initial ideas v2](./initial-ideas-v2.mdx) document, we've selected
 ### Game Flow
 
 #### Initialization
+
 1. SLP initiates game from session view
 2. System selects a card set (based on difficulty or random)
 3. Cards are shuffled and arranged in grid
@@ -51,6 +52,7 @@ Based on the [initial ideas v2](./initial-ideas-v2.mdx) document, we've selected
 5. First player (SLP or Student) is determined randomly or by SLP choice
 
 #### Turn Structure
+
 1. Current player's turn begins
 2. Player can flip up to 2 cards
 3. If 2 cards are flipped:
@@ -62,12 +64,14 @@ Based on the [initial ideas v2](./initial-ideas-v2.mdx) document, we've selected
 5. Process repeats until all matches are found
 
 #### Match Validation Logic
+
 - **Match**: Word card's `matchId` equals Picture card's `id` (or vice versa)
 - **Correct Match**: Player earns 1 point, cards stay flipped, player continues turn
 - **Incorrect Match**: No point, cards flip back, turn ends immediately
 - **Already Matched Cards**: Cannot be flipped again
 
 #### Turn Switching Rules
+
 - Turn switches when:
   - Player makes an incorrect match
   - Player explicitly ends turn (optional feature)
@@ -77,12 +81,14 @@ Based on the [initial ideas v2](./initial-ideas-v2.mdx) document, we've selected
   - Player flips first card (waiting for second card)
 
 #### Game Completion Conditions
+
 - **All matches found**: Game ends when all card pairs are matched
 - **Time limit reached** (optional): Game ends after X minutes
 - **Manual end**: SLP can end game early
 - Final scores are calculated and saved
 
 #### Score Calculation
+
 - **Matches**: Number of successful matches per player
 - **Attempts**: Total number of match attempts per player
 - **Accuracy**: `(matches / attempts) * 100`
@@ -103,6 +109,7 @@ Based on the [initial ideas v2](./initial-ideas-v2.mdx) document, we've selected
 ### Location
 
 Card data will be stored as JSON files for simplicity. Recommended location:
+
 - `packages/domain/src/data/game-cards.json` (shared between frontend and backend)
 - Or `apps/web/src/data/game-cards.json` (frontend-only if backend doesn't need it)
 
@@ -132,14 +139,18 @@ interface Card {
 ### Initial Card Sets
 
 #### Easy Set (3-4 pairs)
+
 Simple, common words suitable for beginners:
+
 - Cat / 🐱
 - Dog / 🐶
 - Ball / ⚽
 - Car / 🚗
 
 #### Medium Set (4-6 pairs)
+
 More complex vocabulary:
+
 - Elephant / 🐘
 - Butterfly / 🦋
 - Mountain / ⛰️
@@ -148,7 +159,9 @@ More complex vocabulary:
 - Library / 📚
 
 #### Hard Set (6-8 pairs)
+
 Advanced vocabulary and abstract concepts:
+
 - Architecture / 🏛️
 - Orchestra / 🎼
 - Laboratory / 🧪
@@ -232,6 +245,7 @@ Advanced vocabulary and abstract concepts:
 ### Why JSON (Not Database)
 
 **Advantages:**
+
 - **Faster development**: No database schema or migrations needed
 - **Easy to modify**: Edit JSON file directly during development
 - **Version control**: Card sets can be tracked in git
@@ -240,6 +254,7 @@ Advanced vocabulary and abstract concepts:
 - **Flexible**: Easy to add new card sets or modify existing ones
 
 **Future Migration Path:**
+
 - If card management becomes complex (admin UI, user-generated content), migrate to database
 - JSON structure can be directly mapped to database schema
 - Migration script can import JSON into database tables
@@ -254,22 +269,22 @@ interface GameState {
   gameId: string; // UUID
   therapySessionId: string; // Links to therapy session
   gameType: 'word-picture-match';
-  
+
   // Game status
   status: 'waiting' | 'playing' | 'paused' | 'completed';
-  
+
   // Turn management
   currentPlayer: 'slp' | 'student';
   turnsPlayed: number;
-  
+
   // Card state
   cardSetId: string; // Which card set is being used
   cards: CardState[];
   flippedCards: string[]; // Currently flipped card IDs (max 2)
-  
+
   // Match tracking
   matches: Match[];
-  
+
   // Scoring
   score: {
     slp: {
@@ -283,12 +298,12 @@ interface GameState {
       accuracy: number; // percentage
     };
   };
-  
+
   // Timing
   startedAt: string | null; // ISO timestamp
   completedAt: string | null; // ISO timestamp
   lastActivityAt: string; // ISO timestamp
-  
+
   // Metadata
   metadata?: {
     difficulty?: string;
@@ -347,11 +362,13 @@ stateDiagram-v2
 **Endpoint**: `ws://server/game/:sessionId` or `wss://server/game/:sessionId`
 
 **Authentication**:
+
 - SLP: Uses session token from better-auth
 - Student: Uses link token from session link
 - Token passed in connection query: `?token=<token>&role=<slp|student>`
 
 **Room-based Architecture**:
+
 - One WebSocket room per therapy session
 - Room ID = `therapy-session-{sessionId}`
 - Players join room when connecting
@@ -362,6 +379,7 @@ stateDiagram-v2
 #### Client → Server Messages
 
 ##### `join-game`
+
 Player joins the game room.
 
 ```typescript
@@ -378,6 +396,7 @@ Player joins the game room.
 **Response**: Server sends `game-state` message with current state.
 
 ##### `flip-card`
+
 Player flips a card.
 
 ```typescript
@@ -392,6 +411,7 @@ Player flips a card.
 ```
 
 **Validation**:
+
 - Must be current player's turn
 - Card must not be already matched
 - Must not exceed 2 flipped cards
@@ -400,6 +420,7 @@ Player flips a card.
 **Response**: Server broadcasts `card-flipped` to all players.
 
 ##### `check-match`
+
 Player attempts to match two flipped cards.
 
 ```typescript
@@ -415,6 +436,7 @@ Player attempts to match two flipped cards.
 ```
 
 **Validation**:
+
 - Must be current player's turn
 - Both cards must be flipped
 - Cards must be different
@@ -423,6 +445,7 @@ Player attempts to match two flipped cards.
 **Response**: Server broadcasts `match-result` to all players, updates game state.
 
 ##### `end-turn`
+
 Player explicitly ends their turn (optional feature).
 
 ```typescript
@@ -437,6 +460,7 @@ Player explicitly ends their turn (optional feature).
 **Response**: Server broadcasts `turn-changed` to all players.
 
 ##### `pause-game`
+
 SLP pauses the game.
 
 ```typescript
@@ -451,6 +475,7 @@ SLP pauses the game.
 **Response**: Server broadcasts `game-paused` to all players.
 
 ##### `resume-game`
+
 SLP resumes the game.
 
 ```typescript
@@ -465,6 +490,7 @@ SLP resumes the game.
 **Response**: Server broadcasts `game-resumed` to all players.
 
 ##### `end-game`
+
 SLP ends the game early.
 
 ```typescript
@@ -481,6 +507,7 @@ SLP ends the game early.
 #### Server → Client Messages
 
 ##### `game-state`
+
 Full game state update (sent on join, after state changes).
 
 ```typescript
@@ -492,6 +519,7 @@ Full game state update (sent on join, after state changes).
 ```
 
 ##### `card-flipped`
+
 Card flip event.
 
 ```typescript
@@ -506,6 +534,7 @@ Card flip event.
 ```
 
 ##### `match-result`
+
 Match attempt result.
 
 ```typescript
@@ -526,6 +555,7 @@ Match attempt result.
 ```
 
 ##### `turn-changed`
+
 Turn switched to new player.
 
 ```typescript
@@ -540,6 +570,7 @@ Turn switched to new player.
 ```
 
 ##### `game-completed`
+
 Game finished with final results.
 
 ```typescript
@@ -558,6 +589,7 @@ Game finished with final results.
 ```
 
 ##### `error`
+
 Error message.
 
 ```typescript
@@ -587,15 +619,18 @@ interface GameMessage {
 ### Error Handling
 
 **Connection Errors**:
+
 - Invalid token → Close connection with error
 - Session not found → Close connection with error
 - Already connected → Send error, close duplicate connection
 
 **Gameplay Errors**:
+
 - Invalid action (not player's turn, invalid card, etc.) → Send `error` message
 - Game state conflict → Send full `game-state` to resync
 
 **Reconnection**:
+
 - Player reconnects → Send full `game-state`
 - Game continues from last state
 - Other player notified of reconnection (optional)
@@ -605,7 +640,9 @@ interface GameMessage {
 ### Game Scene Structure
 
 #### Preload Scene
+
 Loads all game assets:
+
 - Card images
 - Card back image
 - UI elements (buttons, score displays)
@@ -613,7 +650,9 @@ Loads all game assets:
 - Fonts
 
 #### Main Game Scene
+
 Core gameplay:
+
 - Card grid rendering
 - Card flip animations
 - Click/tap handlers
@@ -623,7 +662,9 @@ Core gameplay:
 - WebSocket client integration
 
 #### Game Over Scene
+
 Final results:
+
 - Final scores
 - Winner announcement
 - Play again button (optional)
@@ -632,13 +673,14 @@ Final results:
 ### Key Components
 
 #### Card Sprite
+
 ```typescript
 class CardSprite extends Phaser.GameObjects.Container {
   cardId: string;
   cardData: CardState;
   isFlipped: boolean;
   isMatched: boolean;
-  
+
   // Methods
   flip(): void; // Animate card flip
   showMatch(): void; // Show match success animation
@@ -648,13 +690,14 @@ class CardSprite extends Phaser.GameObjects.Container {
 ```
 
 #### Grid Layout Manager
+
 ```typescript
 class CardGridManager {
   cards: CardSprite[];
   gridWidth: number;
   gridHeight: number;
   cardSpacing: number;
-  
+
   // Methods
   arrangeCards(cards: CardState[]): void;
   getCardAtPosition(x: number, y: number): CardSprite | null;
@@ -663,11 +706,12 @@ class CardGridManager {
 ```
 
 #### WebSocket Client Wrapper
+
 ```typescript
 class GameWebSocketClient {
   ws: WebSocket;
   gameState: GameState;
-  
+
   // Methods
   connect(sessionId: string, token: string, role: string): void;
   sendMessage(message: GameMessage): void;
@@ -719,14 +763,14 @@ const gameConfig: Phaser.Types.Core.GameConfig = {
 
 ```typescript
 // game-container.tsx
-export function WordPictureMatchGame({ 
-  sessionId, 
-  token, 
-  role 
+export function WordPictureMatchGame({
+  sessionId,
+  token,
+  role
 }: GameProps) {
   const gameRef = useRef<Phaser.Game | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  
+
   useEffect(() => {
     if (containerRef.current && !gameRef.current) {
       gameRef.current = new Phaser.Game({
@@ -734,7 +778,7 @@ export function WordPictureMatchGame({
         parent: containerRef.current
       });
     }
-    
+
     return () => {
       if (gameRef.current) {
         gameRef.current.destroy(true);
@@ -742,7 +786,7 @@ export function WordPictureMatchGame({
       }
     };
   }, []);
-  
+
   return <div ref={containerRef} id="game-container" />;
 }
 ```
@@ -752,16 +796,19 @@ export function WordPictureMatchGame({
 ### With Existing Systems
 
 #### Game Output API
+
 - **Create**: When game starts, create `game_output` record
 - **Update**: Periodically save game state to `gameState` JSONB field
 - **Complete**: On game end, update with final scores, accuracy, duration
 
 #### Session Recording
+
 - Game results linked to therapy session via `therapySessionId`
 - Game completion triggers session data update
 - Game metrics available in session summary
 
 #### Trial Data
+
 - Each match attempt = one trial
 - **Correct match** → Trial with `correct: true`
 - **Incorrect match** → Trial with `correct: false`
@@ -769,6 +816,7 @@ export function WordPictureMatchGame({
 - Linked to session via `therapySessionId`
 
 #### Progress Tracking
+
 - Game results feed into student progress calculations
 - Accuracy from games contributes to overall session accuracy
 - Game completion counts toward session activities
@@ -783,29 +831,29 @@ sequenceDiagram
     participant WS as WebSocket Server
     participant API as REST API
     participant DB as Database
-    
+
     SLP->>API: POST /game-output (create game)
     API->>DB: Insert game_output record
     API-->>SLP: Game created
-    
+
     SLP->>WS: join-game
     Student->>WS: join-game
     WS->>SLP: game-state
     WS->>Student: game-state
-    
+
     SLP->>WS: flip-card
     WS->>SLP: card-flipped
     WS->>Student: card-flipped
-    
+
     SLP->>WS: check-match
     WS->>WS: Validate match
     WS->>API: Record trial (correct/incorrect)
     API->>DB: Insert trial_data
     WS->>SLP: match-result
     WS->>Student: match-result
-    
+
     Note over WS,DB: Game continues...
-    
+
     WS->>WS: All matches found
     WS->>API: PUT /game-output/:id (final state)
     API->>DB: Update game_output
@@ -816,6 +864,7 @@ sequenceDiagram
 ## Implementation Phases
 
 ### Phase 1: Core Game Logic (Days 1-2)
+
 - [ ] Define TypeScript interfaces for game state
 - [ ] Create card data JSON file with sample sets
 - [ ] Implement game state management class
@@ -824,6 +873,7 @@ sequenceDiagram
 - [ ] Unit tests for game logic
 
 ### Phase 2: WebSocket Infrastructure (Days 2-3)
+
 - [ ] Set up WebSocket server (Bun/Elysia)
 - [ ] Implement room management
 - [ ] Implement message handlers
@@ -832,6 +882,7 @@ sequenceDiagram
 - [ ] Add error handling
 
 ### Phase 3: Phaser Game (Days 3-5)
+
 - [ ] Set up Phaser project structure
 - [ ] Create preload scene for assets
 - [ ] Implement card sprites with flip animation
@@ -842,6 +893,7 @@ sequenceDiagram
 - [ ] Add score display and turn indicator
 
 ### Phase 4: Integration (Days 5-6)
+
 - [ ] Connect to game output API
 - [ ] Link match attempts to trial data
 - [ ] Save game state periodically
@@ -850,6 +902,7 @@ sequenceDiagram
 - [ ] Add game initiation from SLP session view
 
 ### Phase 5: Polish (Days 6-7)
+
 - [ ] UI/UX improvements
 - [ ] Error handling and user feedback
 - [ ] Reconnection logic testing
@@ -862,6 +915,7 @@ sequenceDiagram
 ### Why Hardcoded JSON for Cards
 
 **Advantages:**
+
 - **Faster development**: No database schema or migrations needed
 - **Easy to modify**: Edit JSON file directly during development and testing
 - **Version control**: Card sets can be tracked in git, see changes over time
@@ -870,6 +924,7 @@ sequenceDiagram
 - **Flexible**: Easy to add new card sets or modify existing ones without migrations
 
 **Future Migration Path:**
+
 - If card management becomes complex (admin UI, user-generated content, analytics), migrate to database
 - JSON structure can be directly mapped to database schema
 - Migration script can import JSON into database tables
@@ -878,6 +933,7 @@ sequenceDiagram
 ### Why WebSocket (Not Polling)
 
 **Real-time synchronization required**: Turn-based gameplay needs instant state updates
+
 - **Low latency**: WebSocket provides sub-100ms latency vs polling's 1-5 second delay
 - **Efficient**: WebSocket uses persistent connection, polling creates many HTTP requests
 - **Better user experience**: Instant feedback on card flips and matches
@@ -887,6 +943,7 @@ sequenceDiagram
 ### Why Phaser.js
 
 **Built for 2D games**: Phaser is specifically designed for 2D game development
+
 - **Good animation support**: Built-in tween system for card flip animations
 - **Active community**: Large community, lots of examples and plugins
 - **Easy to integrate with React**: Can be embedded in React components
@@ -1062,6 +1119,7 @@ sequenceDiagram
 ### Structure for Future Expansion
 
 The JSON structure supports:
+
 - **Multiple card sets**: Array of card sets in one file
 - **Categories**: Organize cards by theme (animals, food, objects, etc.)
 - **Difficulty levels**: Easy, medium, hard for progressive learning

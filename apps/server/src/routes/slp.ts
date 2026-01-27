@@ -13,13 +13,13 @@ const env = getEnv();
 
 /**
  * SLP Routes
- * 
+ *
  * These endpoints are for Speech Language Pathologists (SLPs/Teachers) only.
- * 
+ *
  * IMPORTANT: Students may call these endpoints as part of role detection (useUserRole hook).
  * This is expected behavior - the endpoint will return 404 "SLP profile not found" for students,
  * which is used by the frontend to determine the user is not an SLP.
- * 
+ *
  * All endpoints require authentication (isAuth: true) and operate on the authenticated user's profile.
  */
 export const slpRoutes = new Elysia({ prefix: "/slp" })

@@ -8,10 +8,7 @@ import {
   type NewTrialData,
   type NewSessionRecording,
 } from "@empat-challenge/db/schemas";
-import {
-  createTrialDataSchema,
-  trialDataBatchSchema,
-} from "@empat-challenge/domain/schemas";
+import { createTrialDataSchema, trialDataBatchSchema } from "@empat-challenge/domain/schemas";
 import { eq, and, isNull, sql, desc } from "drizzle-orm";
 import { NotFoundError, BadRequestError } from "../utils/errors";
 import { successBody, createdBody } from "../utils/response-helpers";
@@ -53,10 +50,7 @@ async function getOrCreateSessionRecording(
     incorrectTrials: 0,
   };
 
-  const [created] = await db
-    .insert(sessionRecordingTable)
-    .values(newRecording)
-    .returning();
+  const [created] = await db.insert(sessionRecordingTable).values(newRecording).returning();
 
   return { id: created.id };
 }
@@ -77,10 +71,7 @@ async function updateSessionRecordingMetrics(
     })
     .from(trialDataTable)
     .where(
-      and(
-        eq(trialDataTable.therapySessionId, therapySessionId),
-        isNull(trialDataTable.deletedAt),
-      ),
+      and(eq(trialDataTable.therapySessionId, therapySessionId), isNull(trialDataTable.deletedAt)),
     );
 
   const counts = trialCounts[0] || { total: 0, correct: 0, incorrect: 0 };
@@ -89,8 +80,7 @@ async function updateSessionRecordingMetrics(
   const incorrect = Number(counts.incorrect) || 0;
 
   // Calculate accuracy percentage
-  const accuracyPercentage =
-    total > 0 ? (correct / total) * 100 : null;
+  const accuracyPercentage = total > 0 ? (correct / total) * 100 : null;
 
   // Get or create session recording
   const recording = await getOrCreateSessionRecording(db, therapySessionId);
@@ -102,9 +92,7 @@ async function updateSessionRecordingMetrics(
       totalTrials: total,
       correctTrials: correct,
       incorrectTrials: incorrect,
-      accuracyPercentage: accuracyPercentage
-        ? sql`${accuracyPercentage}::numeric(5,2)`
-        : null,
+      accuracyPercentage: accuracyPercentage ? sql`${accuracyPercentage}::numeric(5,2)` : null,
       updatedAt: new Date(),
     })
     .where(eq(sessionRecordingTable.id, recording.id));
@@ -176,10 +164,7 @@ export const trialDataRoutes = new Elysia({ prefix: "/trial-data" })
         notes: body.notes || null,
       };
 
-      const [created] = await db
-        .insert(trialDataTable)
-        .values(newTrial)
-        .returning();
+      const [created] = await db.insert(trialDataTable).values(newTrial).returning();
 
       // Update session recording metrics
       await updateSessionRecordingMetrics(db, body.therapySessionId);
@@ -252,10 +237,7 @@ export const trialDataRoutes = new Elysia({ prefix: "/trial-data" })
         notes: trial.notes || null,
       }));
 
-      const created = await db
-        .insert(trialDataTable)
-        .values(newTrials)
-        .returning();
+      const created = await db.insert(trialDataTable).values(newTrials).returning();
 
       // Update session recording metrics
       await updateSessionRecordingMetrics(db, body.therapySessionId);

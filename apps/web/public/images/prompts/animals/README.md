@@ -25,6 +25,7 @@ The following images are needed (300x300px, PNG format):
 ## Temporary Placeholders
 
 For development, you can use:
+
 1. Colored rectangles with text labels (e.g., a blue square with "DOG" text)
 2. Free images from Unsplash or Pexels
 3. AI-generated images
@@ -33,6 +34,7 @@ For development, you can use:
 ## Image Sources
 
 Recommended free image sources:
+
 - Unsplash: https://unsplash.com/s/photos/animals
 - Pexels: https://www.pexels.com/search/animals/
 - Pixabay: https://pixabay.com/images/search/animals/

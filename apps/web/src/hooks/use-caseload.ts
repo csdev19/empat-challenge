@@ -1,9 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { clientTreaty } from "@/lib/client-treaty";
 import { getErrorMessage } from "@/lib/error";
-import type {
-  AddStudentsToCaseload,
-} from "@empat-challenge/domain/schemas";
+import type { AddStudentsToCaseload } from "@empat-challenge/domain/schemas";
 import { studentKeys } from "./use-students";
 
 // Query keys

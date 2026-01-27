@@ -26,12 +26,12 @@ app.use((req, res, next) => {
   res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH");
   res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, Cookie");
   res.header("Access-Control-Allow-Credentials", "true");
-  
+
   if (req.method === "OPTIONS") {
     res.sendStatus(200);
     return;
   }
-  
+
   next();
 });
 
@@ -55,8 +55,10 @@ const server = createServer(app);
 
 // Handle WebSocket upgrade requests
 server.on("upgrade", (request, socket, head) => {
-  const pathname = request.url ? new URL(request.url, `http://${request.headers.host}`).pathname : "";
-  
+  const pathname = request.url
+    ? new URL(request.url, `http://${request.headers.host}`).pathname
+    : "";
+
   // Only handle /ws/game/* paths
   if (pathname.startsWith("/ws/game/")) {
     wss.handleUpgrade(request, socket, head, (ws) => {
@@ -69,7 +71,7 @@ server.on("upgrade", (request, socket, head) => {
 });
 
 // Create WebSocket server - handle upgrade requests manually
-const wss = new WebSocketServer({ 
+const wss = new WebSocketServer({
   noServer: true, // Don't auto-upgrade, we'll handle it manually
 });
 
@@ -78,7 +80,7 @@ async function handleWebSocketConnection(ws: WebSocket, request: any) {
   try {
     console.log("[GameServer] WebSocket connection attempt");
     console.log("[GameServer] Request URL:", request.url);
-    
+
     if (!request.url) {
       console.warn("[GameServer] Connection rejected: missing URL");
       ws.close(1008, "Missing URL");
@@ -87,21 +89,22 @@ async function handleWebSocketConnection(ws: WebSocket, request: any) {
 
     // Parse URL to extract sessionId and query params
     // Handle both absolute and relative URLs
-    const baseUrl = request.headers.host 
+    const baseUrl = request.headers.host
       ? `http://${request.headers.host}`
       : `http://localhost:${port}`;
     const url = new URL(request.url, baseUrl);
     console.log("[GameServer] Parsed URL pathname:", url.pathname);
-    
+
     // Extract sessionId from path (format: /ws/game/:sessionId)
     const pathParts = url.pathname.split("/").filter((part) => part.length > 0);
     console.log("[GameServer] Path parts:", pathParts);
-    
+
     // Find sessionId - it should be after "game"
     const gameIndex = pathParts.indexOf("game");
-    const sessionId = gameIndex >= 0 && gameIndex < pathParts.length - 1 
-      ? pathParts[gameIndex + 1] 
-      : pathParts[pathParts.length - 1];
+    const sessionId =
+      gameIndex >= 0 && gameIndex < pathParts.length - 1
+        ? pathParts[gameIndex + 1]
+        : pathParts[pathParts.length - 1];
 
     console.log("[GameServer] Extracted sessionId:", sessionId);
 
@@ -134,21 +137,16 @@ async function handleWebSocketConnection(ws: WebSocket, request: any) {
     // SIMPLIFIED VALIDATION (PUBLIC - NO SECURITY)
     // Bypassing all security checks for development
     // ============================================
-    
+
     let userId: string;
-    
+
     if (role === "student") {
       console.log("[GameServer] Student connection (public mode - no validation)");
       // Just verify session exists (optional check)
       const [session] = await db
         .select()
         .from(therapySessionTable)
-        .where(
-          and(
-            eq(therapySessionTable.id, sessionId),
-            isNull(therapySessionTable.deletedAt),
-          ),
-        )
+        .where(and(eq(therapySessionTable.id, sessionId), isNull(therapySessionTable.deletedAt)))
         .limit(1);
 
       if (!session) {
@@ -159,7 +157,7 @@ async function handleWebSocketConnection(ws: WebSocket, request: any) {
       console.log("[GameServer] Student connected (public mode)");
     } else if (role === "slp") {
       console.log("[GameServer] SLP connection (public mode - no validation)");
-      
+
       // Try to get user from auth session if available, but don't require it
       let slpUserId: string | null = null;
       try {
@@ -170,7 +168,7 @@ async function handleWebSocketConnection(ws: WebSocket, request: any) {
             headers.set(key, Array.isArray(value) ? value[0] : value);
           }
         });
-        
+
         const authSession = await auth.api.getSession({ headers });
         if (authSession?.user) {
           slpUserId = authSession.user.id;
@@ -223,18 +221,22 @@ async function handleWebSocketConnection(ws: WebSocket, request: any) {
     ws.on("error", (error) => {
       console.error("[GameServer] WebSocket error:", error);
     });
-
   } catch (error) {
     console.error("[GameServer] Error setting up WebSocket connection:", error);
     console.error("[GameServer] Error stack:", error instanceof Error ? error.stack : "No stack");
-    ws.close(1011, `Internal server error: ${error instanceof Error ? error.message : String(error)}`);
+    ws.close(
+      1011,
+      `Internal server error: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
 }
 
 function handleWebSocketMessage(ws: WebSocket, message: string): void {
   try {
     // Extract data from WebSocket
-    const data = (ws as any).data as { sessionId: string; role: PlayerRole; userId: string } | undefined;
+    const data = (ws as any).data as
+      | { sessionId: string; role: PlayerRole; userId: string }
+      | undefined;
     if (!data) {
       ws.close(1008, "Invalid connection data");
       return;

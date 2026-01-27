@@ -21,11 +21,13 @@ export const sessionRecordingBaseSchema = z.object({
 /**
  * Schema for creating a session recording
  */
-export const createSessionRecordingSchema = sessionRecordingBaseSchema.pick({
-  therapySessionId: true,
-}).extend({
-  behavioralNotes: z.string().optional(),
-});
+export const createSessionRecordingSchema = sessionRecordingBaseSchema
+  .pick({
+    therapySessionId: true,
+  })
+  .extend({
+    behavioralNotes: z.string().optional(),
+  });
 
 /**
  * Schema for updating session recording (behavioral notes and metrics)

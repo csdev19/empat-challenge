@@ -45,11 +45,13 @@ export function HelloWorldGame() {
       console.log("[Game] Connected");
       setConnected(true);
       // Announce join
-      ws.send(JSON.stringify({
-        type: "join",
-        player: role,
-        timestamp: new Date().toISOString(),
-      }));
+      ws.send(
+        JSON.stringify({
+          type: "join",
+          player: role,
+          timestamp: new Date().toISOString(),
+        }),
+      );
     };
 
     ws.onmessage = (event) => {
@@ -161,7 +163,10 @@ export function HelloWorldGame() {
         </div>
 
         <button
-          onClick={() => { setRole(null); setButtonPresses([]); }}
+          onClick={() => {
+            setRole(null);
+            setButtonPresses([]);
+          }}
           className="mt-8 text-gray-400 hover:text-white underline"
         >
           Switch Role
@@ -178,7 +183,9 @@ export function HelloWorldGame() {
           <h1 className="text-3xl font-bold text-white">Teacher View</h1>
           <div className="flex items-center gap-2">
             <div className={`w-3 h-3 rounded-full ${connected ? "bg-green-500" : "bg-red-500"}`} />
-            <span className="text-sm text-gray-300">{connected ? "Connected" : "Connecting..."}</span>
+            <span className="text-sm text-gray-300">
+              {connected ? "Connected" : "Connecting..."}
+            </span>
           </div>
         </div>
 
@@ -191,28 +198,31 @@ export function HelloWorldGame() {
             </p>
           ) : (
             <div className="space-y-2 max-h-96 overflow-y-auto">
-              {buttonPresses.slice().reverse().map((press, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-3 p-3 bg-gray-700 rounded-lg"
-                >
-                  <div
-                    className={`w-8 h-8 rounded-full ${
-                      press.color === "red" ? "bg-red-500" :
-                      press.color === "blue" ? "bg-blue-500" :
-                      press.color === "green" ? "bg-green-500" :
-                      "bg-yellow-500"
-                    }`}
-                  />
-                  <div className="flex-1">
-                    <span className="font-semibold capitalize text-white">{press.color}</span>
-                    <span className="text-gray-400 ml-2">by {press.player}</span>
+              {buttonPresses
+                .slice()
+                .reverse()
+                .map((press, index) => (
+                  <div key={index} className="flex items-center gap-3 p-3 bg-gray-700 rounded-lg">
+                    <div
+                      className={`w-8 h-8 rounded-full ${
+                        press.color === "red"
+                          ? "bg-red-500"
+                          : press.color === "blue"
+                            ? "bg-blue-500"
+                            : press.color === "green"
+                              ? "bg-green-500"
+                              : "bg-yellow-500"
+                      }`}
+                    />
+                    <div className="flex-1">
+                      <span className="font-semibold capitalize text-white">{press.color}</span>
+                      <span className="text-gray-400 ml-2">by {press.player}</span>
+                    </div>
+                    <span className="text-xs text-gray-500">
+                      {new Date(press.timestamp).toLocaleTimeString()}
+                    </span>
                   </div>
-                  <span className="text-xs text-gray-500">
-                    {new Date(press.timestamp).toLocaleTimeString()}
-                  </span>
-                </div>
-              ))}
+                ))}
             </div>
           )}
         </div>
@@ -225,7 +235,10 @@ export function HelloWorldGame() {
             Clear History
           </button>
           <button
-            onClick={() => { setRole(null); setButtonPresses([]); }}
+            onClick={() => {
+              setRole(null);
+              setButtonPresses([]);
+            }}
             className="text-gray-400 hover:text-white underline"
           >
             Switch Role
@@ -237,10 +250,10 @@ export function HelloWorldGame() {
             <strong>Stats:</strong> {buttonPresses.length} button presses total
             {buttonPresses.length > 0 && (
               <span className="ml-2">
-                (Red: {buttonPresses.filter(p => p.color === "red").length},
-                Blue: {buttonPresses.filter(p => p.color === "blue").length},
-                Green: {buttonPresses.filter(p => p.color === "green").length},
-                Yellow: {buttonPresses.filter(p => p.color === "yellow").length})
+                (Red: {buttonPresses.filter((p) => p.color === "red").length}, Blue:{" "}
+                {buttonPresses.filter((p) => p.color === "blue").length}, Green:{" "}
+                {buttonPresses.filter((p) => p.color === "green").length}, Yellow:{" "}
+                {buttonPresses.filter((p) => p.color === "yellow").length})
               </span>
             )}
           </p>

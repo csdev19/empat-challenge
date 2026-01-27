@@ -20,6 +20,7 @@ This document outlines the implementation plan for **Feature 2: Video Call Sessi
 ### Key Features to Implement
 
 **Feature 2: Video Call Sessions**
+
 - Student session view accessible via link
 - Daily.co video call integration for both participants
 - Session status tracking (scheduled → active → completed)
@@ -27,6 +28,7 @@ This document outlines the implementation plan for **Feature 2: Video Call Sessi
 - Real-time session state management
 
 **Feature 4: Session Data Recording**
+
 - Real-time trial tracking (correct/incorrect)
 - Automatic percentage calculation
 - Behavioral notes input
@@ -59,6 +61,7 @@ Table to store individual trial records during therapy sessions:
 - `createdAt`, `updatedAt`, `deletedAt` (timestamps)
 
 **Indexes**:
+
 - `trial_data_therapySessionId_idx` on `therapySessionId`
 - `trial_data_timestamp_idx` on `timestamp`
 
@@ -78,6 +81,7 @@ Table to store session-level recording data (behavioral notes, overall metrics):
 - `createdAt`, `updatedAt`, `deletedAt` (timestamps)
 
 **Indexes**:
+
 - `session_recording_therapySessionId_idx` on `therapySessionId` (unique)
 
 ### 3. Game Output Table
@@ -104,6 +108,7 @@ Table to store game results and outputs from Phaser games played during sessions
 - `createdAt`, `updatedAt`, `deletedAt` (timestamps)
 
 **Indexes**:
+
 - `game_output_therapySessionId_idx` on `therapySessionId`
 - `game_output_gameType_idx` on `gameType`
 - `game_output_completedAt_idx` on `completedAt`
@@ -125,6 +130,7 @@ Optional table for granular game event tracking (if needed for analytics):
 - `createdAt` (timestamp)
 
 **Indexes**:
+
 - `game_output_event_gameOutputId_idx` on `gameOutputId`
 - `game_output_event_timestamp_idx` on `timestamp`
 
@@ -597,7 +603,7 @@ Games (Phaser.js) will integrate with the tracking system:
 // In Phaser game component
 function GameComponent({ therapySessionId, onGameComplete }) {
   const createGameOutput = useCreateGameOutput();
-  
+
   const handleGameEnd = (gameData) => {
     const output = {
       therapySessionId,
@@ -612,11 +618,11 @@ function GameComponent({ therapySessionId, onGameComplete }) {
       gameEvents: gameData.events,
       gameState: gameData.state,
     };
-    
+
     createGameOutput.mutate(output);
     onGameComplete?.(output);
   };
-  
+
   // ... Phaser game setup
 }
 ```
@@ -652,76 +658,76 @@ function GameComponent({ therapySessionId, onGameComplete }) {
 
 ### Database Layer
 
-| File Path | Description |
-|-----------|-------------|
-| `packages/db/src/schema/trial-data.ts` | Trial data table schema |
-| `packages/db/src/schema/session-recording.ts` | Session recording table schema |
-| `packages/db/src/schema/game-output.ts` | Game output table schema |
+| File Path                                     | Description                               |
+| --------------------------------------------- | ----------------------------------------- |
+| `packages/db/src/schema/trial-data.ts`        | Trial data table schema                   |
+| `packages/db/src/schema/session-recording.ts` | Session recording table schema            |
+| `packages/db/src/schema/game-output.ts`       | Game output table schema                  |
 | `packages/db/src/schema/game-output-event.ts` | Game output event table schema (optional) |
 
 ### Domain Layer
 
-| File Path | Description |
-|-----------|-------------|
-| `packages/domain/src/schemas/trial-data.ts` | Trial data Zod schemas |
-| `packages/domain/src/schemas/session-recording.ts` | Session recording Zod schemas |
-| `packages/domain/src/schemas/game-output.ts` | Game output Zod schemas |
-| `packages/domain/src/schemas/session-link.ts` | Session link validation schemas |
+| File Path                                          | Description                     |
+| -------------------------------------------------- | ------------------------------- |
+| `packages/domain/src/schemas/trial-data.ts`        | Trial data Zod schemas          |
+| `packages/domain/src/schemas/session-recording.ts` | Session recording Zod schemas   |
+| `packages/domain/src/schemas/game-output.ts`       | Game output Zod schemas         |
+| `packages/domain/src/schemas/session-link.ts`      | Session link validation schemas |
 
 ### Backend
 
-| File Path | Description |
-|-----------|-------------|
-| `apps/server/src/routes/session-link.ts` | Session link validation routes |
-| `apps/server/src/routes/trial-data.ts` | Trial data API routes |
-| `apps/server/src/routes/session-recording.ts` | Session recording API routes |
-| `apps/server/src/routes/game-output.ts` | Game output API routes |
+| File Path                                     | Description                    |
+| --------------------------------------------- | ------------------------------ |
+| `apps/server/src/routes/session-link.ts`      | Session link validation routes |
+| `apps/server/src/routes/trial-data.ts`        | Trial data API routes          |
+| `apps/server/src/routes/session-recording.ts` | Session recording API routes   |
+| `apps/server/src/routes/game-output.ts`       | Game output API routes         |
 
 ### Frontend
 
-| File Path | Description |
-|-----------|-------------|
-| `apps/web/src/hooks/use-session-link.ts` | Session link validation hooks |
-| `apps/web/src/hooks/use-trial-data.ts` | Trial data React Query hooks |
-| `apps/web/src/hooks/use-session-recording.ts` | Session recording hooks |
-| `apps/web/src/hooks/use-game-output.ts` | Game output hooks |
-| `apps/web/src/components/session/student-session-view.tsx` | Student session view component |
-| `apps/web/src/components/session/slp-session-view.tsx` | SLP session view component |
-| `apps/web/src/components/session/trial-tracking.tsx` | Trial tracking component |
-| `apps/web/src/components/session/behavioral-notes.tsx` | Behavioral notes component |
-| `apps/web/src/components/session/game-output-tracker.tsx` | Game output tracker component |
-| `apps/web/src/components/session/session-metrics.tsx` | Session metrics display component |
-| `apps/web/src/routes/session/[linkToken].tsx` | Student session route (public) |
-| `apps/web/src/routes/_authenticated/session/[sessionId].tsx` | SLP session route (protected) |
+| File Path                                                    | Description                       |
+| ------------------------------------------------------------ | --------------------------------- |
+| `apps/web/src/hooks/use-session-link.ts`                     | Session link validation hooks     |
+| `apps/web/src/hooks/use-trial-data.ts`                       | Trial data React Query hooks      |
+| `apps/web/src/hooks/use-session-recording.ts`                | Session recording hooks           |
+| `apps/web/src/hooks/use-game-output.ts`                      | Game output hooks                 |
+| `apps/web/src/components/session/student-session-view.tsx`   | Student session view component    |
+| `apps/web/src/components/session/slp-session-view.tsx`       | SLP session view component        |
+| `apps/web/src/components/session/trial-tracking.tsx`         | Trial tracking component          |
+| `apps/web/src/components/session/behavioral-notes.tsx`       | Behavioral notes component        |
+| `apps/web/src/components/session/game-output-tracker.tsx`    | Game output tracker component     |
+| `apps/web/src/components/session/session-metrics.tsx`        | Session metrics display component |
+| `apps/web/src/routes/session/[linkToken].tsx`                | Student session route (public)    |
+| `apps/web/src/routes/_authenticated/session/[sessionId].tsx` | SLP session route (protected)     |
 
 ## Files to Modify
 
 ### Database Layer
 
-| File Path | Changes |
-|-----------|---------|
-| `packages/db/src/schema/index.ts` | Add exports for new schemas |
+| File Path                                   | Changes                                |
+| ------------------------------------------- | -------------------------------------- |
+| `packages/db/src/schema/index.ts`           | Add exports for new schemas            |
 | `packages/db/src/schema/therapy-session.ts` | Add relations to new tables (optional) |
 
 ### Domain Layer
 
-| File Path | Changes |
-|-----------|---------|
+| File Path                              | Changes                     |
+| -------------------------------------- | --------------------------- |
 | `packages/domain/src/schemas/index.ts` | Add exports for new schemas |
 
 ### Backend
 
-| File Path | Changes |
-|-----------|---------|
+| File Path                                    | Changes                                             |
+| -------------------------------------------- | --------------------------------------------------- |
 | `apps/server/src/routes/therapy-sessions.ts` | Add start/end session endpoints, join-info endpoint |
-| `apps/server/src/index.ts` | Register new route modules |
-| `apps/server/src/utils/daily-client.ts` | Add room validation and management utilities |
+| `apps/server/src/index.ts`                   | Register new route modules                          |
+| `apps/server/src/utils/daily-client.ts`      | Add room validation and management utilities        |
 
 ### Frontend
 
-| File Path | Changes |
-|-----------|---------|
-| `apps/web/src/routes/__root.tsx` | Add route definitions for session routes |
+| File Path                            | Changes                                      |
+| ------------------------------------ | -------------------------------------------- |
+| `apps/web/src/routes/__root.tsx`     | Add route definitions for session routes     |
 | `apps/web/src/components/header.tsx` | Add navigation to active sessions (optional) |
 
 ## Environment Variables
@@ -739,6 +745,7 @@ No new environment variables required (uses existing `DAILY_API_KEY`).
 ```
 
 Install with:
+
 ```bash
 bun add @daily-co/daily-js
 ```

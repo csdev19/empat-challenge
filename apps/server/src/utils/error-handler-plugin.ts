@@ -68,7 +68,5 @@ export const errorHandlerPlugin = new Elysia()
       stack: error instanceof Error ? error.stack : undefined,
     });
     set.status = 500;
-    return errorBody(
-      error instanceof Error ? error.message : "Internal server error",
-    );
+    return errorBody(error instanceof Error ? error.message : "Internal server error");
   });

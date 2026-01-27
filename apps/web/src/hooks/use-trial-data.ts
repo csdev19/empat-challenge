@@ -8,20 +8,14 @@ import type {
 } from "@empat-challenge/domain/schemas";
 
 // Re-export types from domain package
-export type {
-  TrialDataBase,
-  CreateTrialData,
-  TrialDataBatch,
-};
+export type { TrialDataBase, CreateTrialData, TrialDataBatch };
 
 // Query keys
 const trialDataKeys = {
   all: ["trialData"] as const,
   lists: () => [...trialDataKeys.all, "list"] as const,
-  list: (therapySessionId: string) =>
-    [...trialDataKeys.lists(), therapySessionId] as const,
-  stats: (therapySessionId: string) =>
-    [...trialDataKeys.all, "stats", therapySessionId] as const,
+  list: (therapySessionId: string) => [...trialDataKeys.lists(), therapySessionId] as const,
+  stats: (therapySessionId: string) => [...trialDataKeys.all, "stats", therapySessionId] as const,
 };
 
 // Fetch trials for a session

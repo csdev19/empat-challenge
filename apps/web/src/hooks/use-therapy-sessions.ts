@@ -9,12 +9,7 @@ import type {
 } from "@empat-challenge/domain/schemas";
 
 // Re-export types from domain package
-export type {
-  TherapySessionBase,
-  GenerateSessionLink,
-  SessionLinkResponse,
-  UpdateSessionStatus,
-};
+export type { TherapySessionBase, GenerateSessionLink, SessionLinkResponse, UpdateSessionStatus };
 
 // Query keys
 const therapySessionKeys = {
@@ -120,11 +115,7 @@ export function useStudentSessions() {
 export function useUpdateSessionStatus() {
   const queryClient = useQueryClient();
 
-  return useMutation<
-    TherapySessionBase,
-    Error,
-    { id: string; data: UpdateSessionStatus }
-  >({
+  return useMutation<TherapySessionBase, Error, { id: string; data: UpdateSessionStatus }>({
     mutationFn: async ({ id, data }): Promise<TherapySessionBase> => {
       const result = await clientTreaty.api.v1["therapy-sessions"]({ id })["status"].put(data);
       if (result.error) {
@@ -162,15 +153,8 @@ export function useStartSession() {
 export function useEndSession() {
   const queryClient = useQueryClient();
 
-  return useMutation<
-    TherapySessionBase,
-    Error,
-    { id: string; duration?: number }
-  >({
-    mutationFn: async ({
-      id,
-      duration,
-    }): Promise<TherapySessionBase> => {
+  return useMutation<TherapySessionBase, Error, { id: string; duration?: number }>({
+    mutationFn: async ({ id, duration }): Promise<TherapySessionBase> => {
       const result = await clientTreaty.api.v1["therapy-sessions"]({ id })["end"].post({
         duration,
       });

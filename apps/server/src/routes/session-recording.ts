@@ -57,7 +57,7 @@ async function getOrCreateSessionRecording(
 
 /**
  * Session Recording Routes
- * 
+ *
  * These endpoints allow both SLPs and Students to access session recordings:
  * - SLPs: Authenticated via cookie, must own the session
  * - Students: Authenticated via session link token (passed as query param)
@@ -72,7 +72,9 @@ export const sessionRecordingRoutes = new Elysia({ prefix: "/session-recording" 
       const linkToken = query?.token as string | undefined;
       const isStudentAccess = !!linkToken;
 
-      console.log(`[SessionRecording] GET request: sessionId=${params.therapySessionId}, isStudentAccess=${isStudentAccess}`);
+      console.log(
+        `[SessionRecording] GET request: sessionId=${params.therapySessionId}, isStudentAccess=${isStudentAccess}`,
+      );
 
       let session;
 
@@ -96,7 +98,9 @@ export const sessionRecordingRoutes = new Elysia({ prefix: "/session-recording" 
           .limit(1);
 
         if (!sessionRecord) {
-          console.warn("[SessionRecording] Student access rejected: invalid session token or session not found");
+          console.warn(
+            "[SessionRecording] Student access rejected: invalid session token or session not found",
+          );
           throw new NotFoundError("Session not found or invalid link token");
         }
 
@@ -123,7 +127,9 @@ export const sessionRecordingRoutes = new Elysia({ prefix: "/session-recording" 
           .limit(1);
 
         if (!slp) {
-          console.warn(`[SessionRecording] SLP access rejected: SLP profile not found for user ${authSession.user.id}`);
+          console.warn(
+            `[SessionRecording] SLP access rejected: SLP profile not found for user ${authSession.user.id}`,
+          );
           throw new NotFoundError("SLP profile not found");
         }
 
@@ -141,7 +147,9 @@ export const sessionRecordingRoutes = new Elysia({ prefix: "/session-recording" 
           .limit(1);
 
         if (!sessionRecord) {
-          console.warn(`[SessionRecording] SLP access rejected: session ${params.therapySessionId} not found or doesn't belong to SLP ${slp.id}`);
+          console.warn(
+            `[SessionRecording] SLP access rejected: session ${params.therapySessionId} not found or doesn't belong to SLP ${slp.id}`,
+          );
           throw new NotFoundError("Therapy session not found");
         }
 

@@ -1,18 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { clientTreaty } from "@/lib/client-treaty";
 import { getErrorMessage } from "@/lib/error";
-import type {
-  SLPBase,
-  CreateSLP,
-  UpdateSLP,
-} from "@empat-challenge/domain/schemas";
+import type { SLPBase, CreateSLP, UpdateSLP } from "@empat-challenge/domain/schemas";
 
 // Re-export types from domain package
-export type {
-  SLPBase,
-  CreateSLP,
-  UpdateSLP,
-};
+export type { SLPBase, CreateSLP, UpdateSLP };
 
 // Query keys
 const slpKeys = {

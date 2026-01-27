@@ -63,9 +63,7 @@ export function SessionMetrics({ therapySessionId }: SessionMetricsProps) {
             <div className="flex items-center justify-center mb-2">
               <TrendingUp className="h-5 w-5 text-green-600" />
             </div>
-            <div className="text-2xl font-bold text-green-600">
-              {recording?.correctTrials || 0}
-            </div>
+            <div className="text-2xl font-bold text-green-600">{recording?.correctTrials || 0}</div>
             <div className="text-sm text-muted-foreground">Correct</div>
           </div>
 

@@ -57,7 +57,9 @@ export function GenerateLinkDialog({
         <DialogHeader>
           <DialogTitle>Session Link Generated</DialogTitle>
           <DialogDescription>
-            Share this link with {studentName ? `${studentName} and other students` : "your students"} to join the therapy session. All students can use the same link.
+            Share this link with{" "}
+            {studentName ? `${studentName} and other students` : "your students"} to join the
+            therapy session. All students can use the same link.
           </DialogDescription>
         </DialogHeader>
 
@@ -66,11 +68,7 @@ export function GenerateLinkDialog({
             <div className="space-y-2">
               <label className="text-sm font-medium">Session Link</label>
               <div className="flex gap-2">
-                <Input
-                  value={sessionLink.linkUrl}
-                  readOnly
-                  className="flex-1 font-mono text-sm"
-                />
+                <Input value={sessionLink.linkUrl} readOnly className="flex-1 font-mono text-sm" />
                 <Button
                   type="button"
                   variant="outline"
@@ -89,9 +87,7 @@ export function GenerateLinkDialog({
 
             <div className="space-y-2">
               <label className="text-sm font-medium">Expires At</label>
-              <p className="text-sm text-muted-foreground">
-                {formatDate(sessionLink.expiresAt)}
-              </p>
+              <p className="text-sm text-muted-foreground">{formatDate(sessionLink.expiresAt)}</p>
             </div>
 
             <div className="flex justify-end gap-2 pt-4">

@@ -261,7 +261,9 @@ function SLPSessionViewContent({
   useDailyEvent("error", (ev) => {
     console.error("[SLPSessionView] Daily.co error:", ev);
     const errorEvent = ev as { errorMsg?: string; message?: string };
-    setJoinError(errorEvent?.errorMsg || errorEvent?.message || "An error occurred in the video call");
+    setJoinError(
+      errorEvent?.errorMsg || errorEvent?.message || "An error occurred in the video call",
+    );
     setIsJoining(false);
   });
 
@@ -392,10 +394,7 @@ function SLPSessionViewContent({
 
         {/* Session Metrics & Trials - Only visible to SLP */}
         {!isStudent && (
-          <SessionMetricsAndTrials
-            therapySessionId={sessionId}
-            showTrialControls={isActive}
-          />
+          <SessionMetricsAndTrials therapySessionId={sessionId} showTrialControls={isActive} />
         )}
 
         {/* Behavioral Notes - Only visible to SLP */}
