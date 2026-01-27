@@ -16,7 +16,7 @@ COPY packages/web-ui/package.json ./packages/web-ui/package.json
 COPY apps/server/package.json ./apps/server/package.json
 
 # Install dependencies
-RUN bun install --frozen-lockfile
+RUN bun install
 
 # Copy source files
 COPY packages ./packages
