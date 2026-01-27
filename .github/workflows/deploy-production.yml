@@ -54,20 +54,3 @@ jobs:
           VITE_SERVER_URL: ${{ vars.VITE_SERVER_URL }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
-      # - name: Deploy Backend to Cloudflare Workers 🚀
-      #   uses: cloudflare/wrangler-action@v3.14.1
-      #   with:
-      #     apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      #     accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      #     workingDirectory: apps/server
-      #     secrets: |
-      #       DATABASE_URL
-      #       DATABASE_URL_DIRECT
-      #       BETTER_AUTH_SECRET
-      #       CORS_ORIGIN
-      #   env:
-      #     DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      #     DATABASE_URL_DIRECT: ${{ secrets.DATABASE_URL_DIRECT }}
-      #     CORS_ORIGIN: ${{ vars.CORS_ORIGIN }}
-      #     BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
