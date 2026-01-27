@@ -1,0 +1,384 @@
+---
+title: Convex as a Real-Time Backend Alternative
+description: Analysis of using Convex for real-time game state synchronization in the therapy session platform
+tags:
+  - think-process
+  - architecture
+  - real-time
+  - convex
+---
+
+# Use Convex
+
+This document explains why we should use Convex for this project.
+
+# Convex as a Real-Time Backend Alternative
+
+This document explains why Convex is a strong candidate for improving real-time behavior, state synchronization, and developer experience in a future iteration of this platform.
+
+Convex is **not used in the current MVP implementation**, which intentionally relies on explicit WebSocket logic to demonstrate low-level real-time fundamentals. However, several parts of the system would benefit from Convex’s reactive data model in a production setting.
+
+---
+
+## Why Consider Convex?
+
+Convex provides a **reactive, real-time database** with built-in subscriptions, server-side functions, and automatic client updates over WebSockets.
+
+Instead of manually managing:
+
+- WebSocket connections
+- Room membership
+- State broadcasting
+- Reconnection logic
+- Partial vs full state sync
+
+Convex allows developers to:
+
+- Mutate server state via functions
+- Subscribe to queries
+- Let the platform handle fan-out and synchronization
+
+This significantly reduces boilerplate and sources of bugs in collaborative or real-time applications.
+
+---
+
+## Current Implementation (Baseline)
+
+In the current architecture:
+
+### Backend (Elysia + WebSockets)
+
+- **Game Rooms**: In-memory `GameRoom` class instances stored in a `Map<string, GameRoom>`
+- **State Management**: Game state stored as `GameState | null` within each `GameRoom` instance
+- **WebSocket Handling**: Explicit WebSocket connections per player role (SLP/student) via Elysia's `.ws()` routes
+- **Message Protocol**: Custom JSON message protocol with types like `select-option`, `next-prompt`, `end-game`
+- **Broadcasting**: Manual `broadcast()` method that iterates through connected players and sends JSON messages
+- **Persistence**: Separate PostgreSQL writes via Drizzle ORM for:
+  - `gameOutputTable` - Game state snapshots and metadata
+  - `trialDataTable` - Individual trial/attempt records
+- **Reconnection**: Manual state synchronization - reconnecting players receive current `gameState` snapshot
+
+### Frontend (React + Custom WebSocket Client)
+
+- **WebSocket Client**: Custom `GameWebSocketClient` class managing connection lifecycle
+- **State Management**: Local React state synchronized with server via WebSocket messages
+- **Message Handlers**: Event-driven message routing with `on()` and `off()` pattern
+- **Reconnection Logic**: Manual reconnection attempts with exponential backoff (max 5 attempts)
+- **Connection Management**: Promise-based connection API with timeout handling
+
+### Key Complexity Points
+
+- **Manual State Sync**: Client must manually parse and apply server state updates
+- **Connection Lifecycle**: Explicit handling of connect/disconnect/reconnect scenarios
+- **Message Protocol**: Custom JSON message format requires careful type management
+- **State Persistence**: Game state must be explicitly written to database after mutations
+- **Error Handling**: Manual error handling for WebSocket failures, timeouts, and connection drops
+
+This model is intentionally explicit and demonstrates low-level real-time fundamentals, but it introduces significant boilerplate and potential sources of bugs as features grow.
+
+---
+
+## Areas That Could Be Improved with Convex
+
+### 1. Game State Synchronization
+
+**Current approach** (`apps/server/src/websocket/game-room.ts`):
+
+```typescript
+// Manual state management
+private gameState: GameState | null = null;
+private players: Map<PlayerRole, Player> = new Map();
+
+// Manual broadcasting
+private broadcast(message: { type: string; payload: unknown; timestamp: string }): void {
+  const json = JSON.stringify(message);
+  this.players.forEach((player) => {
+    if (player.ws.readyState === 1) {
+      try {
+        player.ws.send(json);
+      } catch (error) {
+        console.error(`[GameRoom] Failed to send message to ${player.role}:`, error);
+      }
+    }
+  });
+}
+```
+
+- Game state stored in memory (`GameRoom.gameState`)
+- Explicit WebSocket messages for state updates, turn changes, answer results
+- Full snapshots broadcast after each action
+- Manual error handling for failed sends
+- Manual readyState checks before sending
+
+**With Convex**:
+
+```typescript
+// Reactive state - automatically synced
+const gameState = useQuery(api.games.getGameState, { sessionId });
+const selectOption = useMutation(api.games.selectOption);
+
+// State mutations automatically trigger subscriptions
+await selectOption({ sessionId, optionId });
+```
+
+- Game state stored as a Convex document
+- Clients subscribe via `useQuery()` - automatic re-renders on changes
+- Server functions (`mutation`) mutate state atomically
+- Updates automatically pushed to all subscribers via Convex's WebSocket layer
+- Built-in optimistic updates and error handling
+
+**Benefit**:
+
+- **~200 lines of code eliminated** (broadcast logic, message serialization, error handling)
+- No manual broadcast logic - Convex handles fan-out automatically
+- No need to handle reconnect snapshots - Convex automatically resyncs on reconnect
+- Fewer edge cases around partial updates - atomic mutations guarantee consistency
+
+---
+
+### 2. Presence & Session Membership
+
+**Current approach** (`apps/server/src/index.ts`):
+
+```typescript
+// In-memory room management
+const gameRooms = new Map<string, GameRoom>();
+
+// Manual connection tracking
+.ws("/ws/game/:sessionId", {
+  open(ws) {
+    const room = gameRooms.get(sessionId);
+    if (!room) {
+      room = new GameRoom(sessionId);
+      gameRooms.set(sessionId, room);
+    }
+    room.addPlayer({ id: userId, role, ws: ws.raw });
+  },
+  close(ws) {
+    const room = gameRooms.get(sessionId);
+    if (room) {
+      room.removePlayer(role);
+      if (room.getPlayerCount() === 0) {
+        gameRooms.delete(sessionId); // Manual cleanup
+      }
+    }
+  }
+})
+```
+
+- Presence tracked implicitly via open WebSocket connections in `GameRoom.players` Map
+- Cleanup required on disconnect - must manually check if room is empty
+- Reconnect logic must be handled manually - client must re-establish connection
+- **State lost on server restart** - all in-memory rooms are lost
+
+**With Convex**:
+
+```typescript
+// Presence as data
+const presence = useQuery(api.sessions.getPresence, { sessionId });
+// Automatically updates when users join/leave
+
+// Automatic cleanup on disconnect
+// Persistent across server restarts
+```
+
+- Presence modeled explicitly in Convex database
+- Automatic updates when users join/leave via subscriptions
+- Cleaner handling of reconnects - Convex automatically detects and resyncs
+- **State persists across restarts** - stored in Convex database
+
+**Benefit**:
+
+- More reliable session awareness - no lost connections on server restart
+- Easier to add spectator or observer roles - just add more query subscriptions
+- Built-in presence API for "who's online" features
+- No manual cleanup logic needed
+
+---
+
+### 3. Session Data Recording
+
+**Current approach**:
+
+- Trial data written explicitly via backend logic
+- Separate persistence from real-time flow
+
+**With Convex**:
+
+- Trial records created as part of the same mutation that processes a game action
+- Stronger guarantees around consistency
+
+**Benefit**:
+
+- Fewer race conditions
+- Cleaner mental model: “one action → one mutation → all updates”
+
+---
+
+### 4. Client Simplicity
+
+**Current approach** (`apps/web/src/components/game/word-picture-match/websocket-client.ts`):
+
+```typescript
+// ~300 lines of WebSocket client code
+export class GameWebSocketClient {
+  private ws: WebSocket | null = null;
+  private gameState: GameState | null = null;
+  private messageHandlers: Map<string, Array<(message: ServerGameMessage) => void>> = new Map();
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 5;
+  private reconnectDelay = 1000;
+
+  async connect(): Promise<void> { /* 50+ lines */ }
+  private _connect(): Promise<void> { /* 30+ lines */ }
+  private setupEventHandlers() { /* 40+ lines */ }
+  private handleReconnect() { /* 30+ lines */ }
+  on(type: string, handler: Function) { /* manual event routing */ }
+  off(type: string, handler: Function) { /* manual cleanup */ }
+  send(message: ClientGameMessage) { /* manual serialization */ }
+}
+```
+
+- Clients maintain WebSocket clients with ~300 lines of connection management code
+- Manual message parsing and type checking
+- Event routing and handlers with manual `on()`/`off()` pattern
+- Manual reconnection logic with exponential backoff
+- Manual state synchronization on reconnect
+
+**With Convex**:
+
+```typescript
+// ~10 lines of code
+const gameState = useQuery(api.games.getGameState, { sessionId });
+const selectOption = useMutation(api.games.selectOption);
+
+// UI automatically updates when gameState changes
+if (gameState?.status === "active") {
+  return <GameBoard state={gameState} onSelect={selectOption} />;
+}
+```
+
+- Clients use reactive queries - automatic re-renders on data changes
+- No manual socket protocol - Convex handles WebSocket layer
+- UI updates automatically when data changes - React integration built-in
+- Built-in loading states, error handling, and optimistic updates
+
+**Benefit**:
+
+- **~290 lines of code eliminated** per client component
+- Less client-side state - Convex manages state server-side
+- Fewer synchronization bugs - automatic consistency guarantees
+- Faster iteration on UI - focus on UI logic, not connection management
+- Built-in TypeScript types from Convex schema
+
+---
+
+## Why Convex Was Not Used in the Current Implementation
+
+Convex was intentionally **not** chosen for the initial implementation because:
+
+- **Technical Demonstration**: The goal was to demonstrate explicit real-time modeling and server authority
+- **Learning Value**: Using WebSockets directly provides deeper understanding of real-time systems
+- **Control**: Explicit control over connection lifecycle, message protocol, and state management
+- **Architecture Clarity**: The current implementation makes the real-time flow completely transparent
+
+The current implementation prioritizes **clarity and explicit control** over developer convenience. This is valuable for:
+
+- Understanding how real-time systems work under the hood
+- Debugging connection issues and state synchronization
+- Customizing behavior for specific use cases
+- Educational purposes
+
+However, this comes at the cost of:
+
+- **~500+ lines of boilerplate code** (WebSocket client + server room management)
+- **Manual error handling** for edge cases (reconnects, timeouts, partial failures)
+- **State loss on server restart** (in-memory game rooms)
+- **Complexity** that grows with each new feature
+
+---
+
+## When Convex Would Be the Right Choice
+
+Convex would become a strong choice if the platform needed to support:
+
+### Production Requirements
+
+- **Multiple concurrent observers**: Parents, supervisors, or administrators watching sessions in real-time
+- **Persistent shared state**: Game state that survives server restarts and deployments
+- **Scalability**: Multiple server instances without shared state coordination
+- **Faster iteration**: Focus on features rather than connection management
+
+### Development Velocity
+
+- **Reduced complexity**: Eliminate ~500+ lines of WebSocket boilerplate
+- **Fewer bugs**: Built-in error handling, reconnection, and state synchronization
+- **Type safety**: End-to-end TypeScript types from database to UI
+- **Developer experience**: React hooks (`useQuery`, `useMutation`) instead of manual state management
+
+### Specific Use Cases
+
+- **Session history**: Query past game states without additional database setup
+- **Analytics**: Real-time metrics and dashboards via subscriptions
+- **Multi-session coordination**: SLP managing multiple students simultaneously
+- **Offline support**: Built-in optimistic updates and conflict resolution
+
+In those scenarios, the reduction in boilerplate (~500+ lines), cognitive load, and potential bugs would significantly outweigh the loss of low-level control.
+
+---
+
+## Trade-offs to Consider
+
+- Less explicit control over transport and synchronization
+- Strong coupling to Convex’s data model
+- Harder to demonstrate low-level real-time fundamentals
+- Requires rethinking persistence and migrations
+
+These trade-offs are acceptable in product development, but less ideal for a technical showcase focused on fundamentals.
+
+---
+
+## Summary
+
+The current implementation uses explicit WebSockets with Elysia to demonstrate real-time correctness and server authority. This approach provides:
+
+- **Full control** over connection lifecycle and message protocol
+- **Transparency** into how real-time systems work
+- **Educational value** for understanding WebSocket fundamentals
+- **Customization** for specific use cases
+
+However, it requires:
+
+- **~500+ lines of boilerplate** (WebSocket client + server room management)
+- **Manual error handling** for edge cases
+- **State loss on server restart** (in-memory rooms)
+- **Complexity** that grows with features
+
+Convex represents a **higher-level evolution** of the architecture, trading explicit protocol management for:
+
+- **Reactive state** with automatic synchronization
+- **Developer velocity** with built-in patterns
+- **Reliability** with persistent state and automatic error handling
+- **Scalability** with built-in multi-instance support
+
+It would be a strong candidate for future iterations once the core interaction model is validated and the focus shifts from **technical demonstration** to **production readiness** and **development velocity**.
+
+## Code Comparison
+
+### Current: Manual WebSocket Management
+
+```typescript
+// Server: ~200 lines in GameRoom class
+// Client: ~300 lines in GameWebSocketClient class
+// Total: ~500 lines of connection/state management code
+```
+
+### With Convex
+
+```typescript
+// Server: Convex functions (~50 lines per mutation)
+// Client: React hooks (~10 lines per component)
+// Total: ~60 lines for equivalent functionality
+```
+
+**Estimated code reduction: ~88%** (from ~500 lines to ~60 lines)
