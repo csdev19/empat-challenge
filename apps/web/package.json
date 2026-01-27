@@ -7,7 +7,8 @@
     "serve": "vite preview",
     "alchemy:dev": "alchemy dev",
     "dev": "vite dev",
-    "deploy": "alchemy deploy",
+    "alchemy:deploy": "alchemy deploy",
+    "deploy": "wrangler deploy",
     "destroy": "alchemy destroy",
     "wrangler:dev": "wrangler dev --port 3001 --inspector-port 9230"
   },
