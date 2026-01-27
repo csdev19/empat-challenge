@@ -1,26 +1,20 @@
 /**
  * SLP Session View Component
  *
- * NOTE: Video call functionality is temporarily commented out to focus on Phaser game development.
- * All video-related code (Daily.co integration, video tokens, call frame, etc.) has been preserved
- * but commented with clear markers for easy re-enabling.
- *
- * TODO: When ready to re-enable video call features:
- * 1. Uncomment Daily.co imports
- * 2. Uncomment video-related state and hooks
- * 3. Uncomment video token fetching useEffect
- * 4. Uncomment video joining useEffect and event handlers
- * 5. Uncomment video call Card in JSX
- * 6. Uncomment DailyProvider wrapper
+ * Features:
+ * - Video call via Daily.co WebRTC
+ * - Session management (start/end)
+ * - Real-time metrics and trial tracking
+ * - Behavioral notes
+ * - Game output tracking
  */
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Card, CardContent } from "@empat-challenge/web-ui";
 import { Button } from "@empat-challenge/web-ui";
 import { useTherapySession, useStartSession, useEndSession } from "@/hooks/use-therapy-sessions";
-import { TrialTracking } from "@/components/session/trial-tracking";
+import { SessionMetricsAndTrials } from "@/components/session/session-metrics-and-trials";
 import { BehavioralNotes } from "@/components/session/behavioral-notes";
-import { SessionMetrics } from "@/components/session/session-metrics";
 import { GameOutputTracker } from "@/components/session/game-output-tracker";
 import { WordPictureMatchGame } from "@/components/game/word-picture-match/game-container";
 import { HelloWorldGame } from "@/components/game/hello-world-game";
@@ -28,10 +22,8 @@ import Loader from "@/components/loader";
 import { Video, Play, Square, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { THERAPY_SESSION_STATUSES } from "@empat-challenge/domain/constants";
-// TEMPORARILY COMMENTED: Video call functionality disabled to focus on Phaser game development
-// TODO: Uncomment when ready to re-enable video call features
-// import { DailyProvider, useCallFrame, useDailyEvent } from "@daily-co/daily-react";
-// import { getErrorMessage } from "@/lib/error";
+import { DailyProvider, useCallFrame, useDailyEvent } from "@daily-co/daily-react";
+import { getErrorMessage } from "@/lib/error";
 import { useUserRole } from "@/hooks/use-user-role";
 
 interface SLPSessionViewProps {
@@ -39,8 +31,6 @@ interface SLPSessionViewProps {
 }
 
 // Inner component that uses Daily hooks (must be inside DailyProvider)
-// TEMPORARILY COMMENTED: Daily hooks are disabled, but component structure kept for easy re-enabling
-// TODO: Uncomment Daily hooks when re-enabling video call features
 function SLPSessionViewContent({
   sessionId,
   session,
@@ -53,130 +43,126 @@ function SLPSessionViewContent({
   const startSession = useStartSession();
   const endSession = useEndSession();
 
-  // TEMPORARILY COMMENTED: Video call state and hooks disabled to focus on Phaser game
-  // TODO: Uncomment when ready to re-enable video call features
-  // const [isJoining, setIsJoining] = useState(false);
-  // const [joinError, setJoinError] = useState<string | null>(null);
-  // const videoContainerRef = useRef<HTMLDivElement>(null);
-  // const [slpToken, setSlpToken] = useState<string | null>(null);
-  // const [studentToken, setStudentToken] = useState<string | null>(null);
-  // const [dailyRoomUrl, setDailyRoomUrl] = useState<string | null>(null);
+  // Video call state
+  const [isJoining, setIsJoining] = useState(false);
+  const [joinError, setJoinError] = useState<string | null>(null);
+  const videoContainerRef = useRef<HTMLDivElement>(null);
+  const [slpToken, setSlpToken] = useState<string | null>(null);
+  const [studentToken, setStudentToken] = useState<string | null>(null);
+  const [dailyRoomUrl, setDailyRoomUrl] = useState<string | null>(null);
 
-  // // Use appropriate token based on user role
-  // const videoToken = isStudent ? studentToken : slpToken;
+  // Use appropriate token based on user role
+  const videoToken = isStudent ? studentToken : slpToken;
 
-  // // Get call frame using Daily React hook
-  // // URL and token are passed to join() method, not in options
-  // const callFrame = useCallFrame({
-  //   parentElRef: videoContainerRef,
-  //   options: {
-  //     showLeaveButton: true,
-  //     iframeStyle: {
-  //       width: "100%",
-  //       height: "100%",
-  //       border: "none",
-  //     },
-  //   },
-  //   shouldCreateInstance: () => !!videoToken && !!dailyRoomUrl,
-  // });
+  // Get call frame using Daily React hook
+  // URL and token are passed to join() method, not in options
+  const callFrame = useCallFrame({
+    parentElRef: videoContainerRef,
+    options: {
+      showLeaveButton: true,
+      iframeStyle: {
+        width: "100%",
+        height: "100%",
+        border: "none",
+      },
+    },
+    shouldCreateInstance: () => !!videoToken && !!dailyRoomUrl,
+  });
 
-  // TEMPORARILY COMMENTED: Video call token fetching disabled to focus on Phaser game
-  // TODO: Uncomment when ready to re-enable video call features
-  // // Fetch join info (SLP token and room URL)
-  // useEffect(() => {
-  //   if (!session) return;
+  // Fetch join info (SLP token and room URL)
+  useEffect(() => {
+    if (!session) return;
 
-  //   const fetchJoinInfo = async () => {
-  //     try {
-  //       console.log("[SLPSessionView] Fetching join info", { sessionId });
-  //       const { clientTreaty } = await import("@/lib/client-treaty");
+    const fetchJoinInfo = async () => {
+      try {
+        console.log("[SLPSessionView] Fetching join info", { sessionId });
+        const { clientTreaty } = await import("@/lib/client-treaty");
 
-  //       const joinInfoResult = await clientTreaty.api.v1["therapy-sessions"]({
-  //         id: sessionId,
-  //       })["join-info"].get();
+        const joinInfoResult = await clientTreaty.api.v1["therapy-sessions"]({
+          id: sessionId,
+        })["join-info"].get();
 
-  //       // Check for treaty-level errors (network, etc.)
-  //       if (joinInfoResult.error) {
-  //         console.error("[SLPSessionView] Treaty error:", joinInfoResult.error);
-  //         throw new Error(getErrorMessage(joinInfoResult.error));
-  //       }
+        // Check for treaty-level errors (network, etc.)
+        if (joinInfoResult.error) {
+          console.error("[SLPSessionView] Treaty error:", joinInfoResult.error);
+          throw new Error(getErrorMessage(joinInfoResult.error));
+        }
 
-  //       // Check if data exists
-  //       if (!joinInfoResult.data) {
-  //         console.error("[SLPSessionView] No data in response");
-  //         throw new Error("No data returned from server");
-  //       }
+        // Check if data exists
+        if (!joinInfoResult.data) {
+          console.error("[SLPSessionView] No data in response");
+          throw new Error("No data returned from server");
+        }
 
-  //       // Extract error and data from API response
-  //       // Response structure: { data: T, error: null } or { data: null, error: { message: string } }
-  //       const { error, data } = joinInfoResult.data;
+        // Extract error and data from API response
+        // Response structure: { data: T, error: null } or { data: null, error: { message: string } }
+        const { error, data } = joinInfoResult.data;
 
-  //       // Check if API returned an error
-  //       if (error) {
-  //         console.error("[SLPSessionView] API error:", error);
-  //         throw new Error(error.message || "Failed to get join information");
-  //       }
+        // Check if API returned an error
+        if (error) {
+          console.error("[SLPSessionView] API error:", error);
+          throw new Error(error.message || "Failed to get join information");
+        }
 
-  //       // Extract the actual join info data
-  //       const joinInfo = data as {
-  //         dailyRoomUrl: string;
-  //         studentToken: string;
-  //         slpToken?: string;
-  //       };
+        // Extract the actual join info data
+        const joinInfo = data as {
+          dailyRoomUrl: string;
+          studentToken: string;
+          slpToken?: string;
+        };
 
-  //       if (!joinInfo) {
-  //         console.error("[SLPSessionView] No join info in data");
-  //         throw new Error("Invalid response format");
-  //       }
+        if (!joinInfo) {
+          console.error("[SLPSessionView] No join info in data");
+          throw new Error("Invalid response format");
+        }
 
-  //       console.log("[SLPSessionView] Join info extracted", {
-  //         hasSlpToken: !!joinInfo.slpToken,
-  //         hasStudentToken: !!joinInfo.studentToken,
-  //         roomUrl: joinInfo.dailyRoomUrl,
-  //         isStudent,
-  //         joinInfoKeys: Object.keys(joinInfo),
-  //       });
+        console.log("[SLPSessionView] Join info extracted", {
+          hasSlpToken: !!joinInfo.slpToken,
+          hasStudentToken: !!joinInfo.studentToken,
+          roomUrl: joinInfo.dailyRoomUrl,
+          isStudent,
+          joinInfoKeys: Object.keys(joinInfo),
+        });
 
-  //       // Set appropriate token based on user role
-  //       if (isStudent) {
-  //         if (!joinInfo.studentToken) {
-  //           console.error("[SLPSessionView] Student token missing", {
-  //             joinInfo,
-  //             sessionId,
-  //           });
-  //           throw new Error(
-  //             "Student token not available. Please ensure you have access to this session.",
-  //           );
-  //         }
-  //         setStudentToken(joinInfo.studentToken);
-  //       } else {
-  //         if (!joinInfo.slpToken) {
-  //           console.error("[SLPSessionView] SLP token missing", {
-  //             joinInfo,
-  //             sessionId,
-  //             sessionSlpId: session.slpId,
-  //           });
-  //           throw new Error(
-  //             "SLP token not available. Please ensure you are authenticated as the SLP and that this session belongs to you.",
-  //           );
-  //         }
-  //         setSlpToken(joinInfo.slpToken);
-  //       }
+        // Set appropriate token based on user role
+        if (isStudent) {
+          if (!joinInfo.studentToken) {
+            console.error("[SLPSessionView] Student token missing", {
+              joinInfo,
+              sessionId,
+            });
+            throw new Error(
+              "Student token not available. Please ensure you have access to this session.",
+            );
+          }
+          setStudentToken(joinInfo.studentToken);
+        } else {
+          if (!joinInfo.slpToken) {
+            console.error("[SLPSessionView] SLP token missing", {
+              joinInfo,
+              sessionId,
+              sessionSlpId: session.slpId,
+            });
+            throw new Error(
+              "SLP token not available. Please ensure you are authenticated as the SLP and that this session belongs to you.",
+            );
+          }
+          setSlpToken(joinInfo.slpToken);
+        }
 
-  //       setDailyRoomUrl(joinInfo.dailyRoomUrl || session.dailyRoomUrl);
-  //     } catch (err) {
-  //       console.error("[SLPSessionView] Failed to fetch join info:", err);
-  //       setJoinError(err instanceof Error ? err.message : "Failed to get join information");
-  //     }
-  //   };
+        setDailyRoomUrl(joinInfo.dailyRoomUrl || session.dailyRoomUrl);
+      } catch (err) {
+        console.error("[SLPSessionView] Failed to fetch join info:", err);
+        setJoinError(err instanceof Error ? err.message : "Failed to get join information");
+      }
+    };
 
-  //   fetchJoinInfo();
-  // }, [session, sessionId, isStudent]);
+    fetchJoinInfo();
+  }, [session, sessionId, isStudent]);
 
   // Track if we've already attempted to auto-start to prevent infinite loops
   const hasAutoStartedRef = useRef(false);
-  // TEMPORARILY COMMENTED: Video call join tracking disabled
-  // const hasJoinedRef = useRef(false);
+  const hasJoinedRef = useRef(false);
 
   const handleStartSession = useCallback(async () => {
     // Prevent multiple start attempts
@@ -203,101 +189,89 @@ function SLPSessionViewContent({
     }
   }, [startSession, sessionId, session.status]);
 
-  // TEMPORARILY COMMENTED: Video call joining and event handlers disabled to focus on Phaser game
-  // TODO: Uncomment when ready to re-enable video call features
-  // // Join the call when callFrame is ready and we have token/URL
-  // useEffect(() => {
-  //   if (!callFrame || !videoToken || !dailyRoomUrl || hasJoinedRef.current) {
-  //     return;
-  //   }
+  // Join the call when callFrame is ready and we have token/URL
+  useEffect(() => {
+    if (!callFrame || !videoToken || !dailyRoomUrl || hasJoinedRef.current) {
+      return;
+    }
 
-  //   const joinCall = async () => {
-  //     try {
-  //       // Check current meeting state
-  //       const meetingState = callFrame.meetingState();
-  //       if (meetingState === "joined-meeting") {
-  //         console.log("[SLPSessionView] Already joined");
-  //         setIsJoining(false);
-  //         hasJoinedRef.current = true;
-  //         return;
-  //       }
+    const joinCall = async () => {
+      try {
+        // Check current meeting state
+        const meetingState = callFrame.meetingState();
+        if (meetingState === "joined-meeting") {
+          console.log("[SLPSessionView] Already joined");
+          setIsJoining(false);
+          hasJoinedRef.current = true;
+          return;
+        }
 
-  //       console.log("[SLPSessionView] Joining Daily.co call", {
-  //         roomUrl: dailyRoomUrl,
-  //         hasToken: !!videoToken,
-  //         isStudent,
-  //         currentState: meetingState,
-  //       });
+        console.log("[SLPSessionView] Joining Daily.co call", {
+          roomUrl: dailyRoomUrl,
+          hasToken: !!videoToken,
+          isStudent,
+          currentState: meetingState,
+        });
 
-  //       setIsJoining(true);
-  //       setJoinError(null);
+        setIsJoining(true);
+        setJoinError(null);
 
-  //       // Join with URL and token
-  //       await callFrame.join({
-  //         url: dailyRoomUrl,
-  //         token: videoToken,
-  //       });
+        // Join with URL and token
+        await callFrame.join({
+          url: dailyRoomUrl,
+          token: videoToken,
+        });
 
-  //       console.log("[SLPSessionView] Successfully joined Daily.co call");
-  //       setIsJoining(false);
-  //       hasJoinedRef.current = true;
+        console.log("[SLPSessionView] Successfully joined Daily.co call");
+        setIsJoining(false);
+        hasJoinedRef.current = true;
 
-  //       // Auto-start session if scheduled and we haven't already tried (only for SLP)
-  //       if (
-  //         !isStudent &&
-  //         session.status === THERAPY_SESSION_STATUSES.SCHEDULED &&
-  //         !hasAutoStartedRef.current
-  //       ) {
-  //         console.log("[SLPSessionView] Auto-starting scheduled session");
-  //         handleStartSession();
-  //       }
-  //     } catch (err) {
-  //       console.error("[SLPSessionView] Failed to join call:", err);
-  //       setJoinError(err instanceof Error ? err.message : "Failed to join video call");
-  //       setIsJoining(false);
-  //       hasJoinedRef.current = false; // Allow retry on error
-  //     }
-  //   };
+        // Auto-start session if scheduled and we haven't already tried (only for SLP)
+        if (
+          !isStudent &&
+          session.status === THERAPY_SESSION_STATUSES.SCHEDULED &&
+          !hasAutoStartedRef.current
+        ) {
+          console.log("[SLPSessionView] Auto-starting scheduled session");
+          handleStartSession();
+        }
+      } catch (err) {
+        console.error("[SLPSessionView] Failed to join call:", err);
+        setJoinError(err instanceof Error ? err.message : "Failed to join video call");
+        setIsJoining(false);
+        hasJoinedRef.current = false; // Allow retry on error
+      }
+    };
 
-  //   joinCall();
-  //   // Only depend on callFrame, videoToken, and dailyRoomUrl - not session.status or handleStartSession
-  //   // eslint-disable-next-line react-hooks/exhaustive-deps
-  // }, [callFrame, videoToken, dailyRoomUrl]);
+    joinCall();
+    // Only depend on callFrame, videoToken, and dailyRoomUrl - not session.status or handleStartSession
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [callFrame, videoToken, dailyRoomUrl]);
 
-  // // Handle Daily events
-  // useDailyEvent("joined-meeting", () => {
-  //   console.log("[SLPSessionView] SLP joined meeting");
-  //   setIsJoining(false);
-  // });
+  // Handle Daily events
+  useDailyEvent("joined-meeting", () => {
+    console.log("[SLPSessionView] SLP joined meeting");
+    setIsJoining(false);
+  });
 
-  // useDailyEvent("left-meeting", () => {
-  //   console.log("[SLPSessionView] SLP left meeting");
-  // });
+  useDailyEvent("left-meeting", () => {
+    console.log("[SLPSessionView] SLP left meeting");
+  });
 
-  // useDailyEvent("error", (ev) => {
-  //   console.error("[SLPSessionView] Daily.co error:", ev);
-  //   setJoinError(ev?.errorMsg || "An error occurred in the video call");
-  //   setIsJoining(false);
-  // });
-
-  // useDailyEvent("load-error", (ev) => {
-  //   console.error("[SLPSessionView] Daily.co load error:", ev);
-  //   setJoinError(
-  //     ev?.errorMsg ||
-  //       ev?.message ||
-  //       "Failed to load video call. Please check your connection and try again.",
-  //   );
-  //   setIsJoining(false);
-  // });
+  useDailyEvent("error", (ev) => {
+    console.error("[SLPSessionView] Daily.co error:", ev);
+    const errorEvent = ev as { errorMsg?: string; message?: string };
+    setJoinError(errorEvent?.errorMsg || errorEvent?.message || "An error occurred in the video call");
+    setIsJoining(false);
+  });
 
   const handleEndSession = async () => {
     try {
       await endSession.mutateAsync({ id: sessionId });
       toast.success("Session ended");
-      // TEMPORARILY COMMENTED: Video call leave disabled
-      // if (callFrame) {
-      //   await callFrame.leave();
-      // }
+      if (callFrame) {
+        await callFrame.leave();
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to end session";
       toast.error(errorMessage);
@@ -344,14 +318,9 @@ function SLPSessionViewContent({
         </CardContent>
       </Card>
 
-      {/* Grid layout: Currently single column since video is disabled, but kept as lg:grid-cols-2
-          for when video call is re-enabled. Game will take full width until then. */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* TEMPORARILY COMMENTED: Video Call section disabled to focus on Phaser game development
-            TODO: Uncomment when ready to re-enable video call features
-        */}
         {/* Video Call */}
-        {/* <Card>
+        <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-2 mb-4">
               <Video className="h-5 w-5" />
@@ -403,7 +372,7 @@ function SLPSessionViewContent({
               )}
             </div>
           </CardContent>
-        </Card> */}
+        </Card>
 
         {/* Hello World WebSocket Test */}
         <Card>
@@ -421,11 +390,13 @@ function SLPSessionViewContent({
           />
         )}
 
-        {/* Session Metrics */}
-        <SessionMetrics therapySessionId={sessionId} />
-
-        {/* Trial Tracking */}
-        {isActive && <TrialTracking therapySessionId={sessionId} />}
+        {/* Session Metrics & Trials - Only visible to SLP */}
+        {!isStudent && (
+          <SessionMetricsAndTrials
+            therapySessionId={sessionId}
+            showTrialControls={isActive}
+          />
+        )}
 
         {/* Behavioral Notes - Only visible to SLP */}
         {!isStudent && <BehavioralNotes therapySessionId={sessionId} />}
@@ -438,8 +409,6 @@ function SLPSessionViewContent({
 }
 
 // Main component that wraps content in DailyProvider
-// TEMPORARILY COMMENTED: DailyProvider wrapper disabled since video call is commented out
-// TODO: Uncomment DailyProvider when re-enabling video call features
 export function SLPSessionView({ sessionId }: SLPSessionViewProps) {
   const { data: session, isLoading } = useTherapySession(sessionId);
 
@@ -470,13 +439,9 @@ export function SLPSessionView({ sessionId }: SLPSessionViewProps) {
     );
   }
 
-  // TEMPORARILY COMMENTED: DailyProvider wrapper disabled
-  // return (
-  //   <DailyProvider>
-  //     <SLPSessionViewContent sessionId={sessionId} session={session} isStudent={isStudent} />
-  //   </DailyProvider>
-  // );
-
-  // Direct render without DailyProvider since video call is disabled
-  return <SLPSessionViewContent sessionId={sessionId} session={session} isStudent={isStudent} />;
+  return (
+    <DailyProvider>
+      <SLPSessionViewContent sessionId={sessionId} session={session} isStudent={isStudent} />
+    </DailyProvider>
+  );
 }

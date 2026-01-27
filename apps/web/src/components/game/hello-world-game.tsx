@@ -102,10 +102,10 @@ export function HelloWorldGame() {
   // Role selection screen
   if (!role) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="bg-white p-8 rounded-xl shadow-lg text-center">
-          <h1 className="text-3xl font-bold mb-6">Button Press Game</h1>
-          <p className="text-gray-600 mb-8">Choose your role:</p>
+      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+        <div className="bg-gray-800 p-8 rounded-xl shadow-lg text-center">
+          <h1 className="text-3xl font-bold mb-6 text-white">Button Press Game</h1>
+          <p className="text-gray-400 mb-8">Choose your role:</p>
           <div className="flex gap-4">
             <button
               onClick={() => setRole("student")}
@@ -172,21 +172,21 @@ export function HelloWorldGame() {
 
   // Teacher view - See all button presses
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
+    <div className="min-h-screen bg-gray-900 p-6">
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold">Teacher View</h1>
+          <h1 className="text-3xl font-bold text-white">Teacher View</h1>
           <div className="flex items-center gap-2">
             <div className={`w-3 h-3 rounded-full ${connected ? "bg-green-500" : "bg-red-500"}`} />
-            <span className="text-sm">{connected ? "Connected" : "Connecting..."}</span>
+            <span className="text-sm text-gray-300">{connected ? "Connected" : "Connecting..."}</span>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-4">
-          <h2 className="font-semibold text-lg mb-4">Button Presses</h2>
+        <div className="bg-gray-800 rounded-xl shadow-lg p-6 mb-4">
+          <h2 className="font-semibold text-lg mb-4 text-white">Button Presses</h2>
 
           {buttonPresses.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">
+            <p className="text-gray-400 text-center py-8">
               Waiting for student to press buttons...
             </p>
           ) : (
@@ -194,7 +194,7 @@ export function HelloWorldGame() {
               {buttonPresses.slice().reverse().map((press, index) => (
                 <div
                   key={index}
-                  className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
+                  className="flex items-center gap-3 p-3 bg-gray-700 rounded-lg"
                 >
                   <div
                     className={`w-8 h-8 rounded-full ${
@@ -205,10 +205,10 @@ export function HelloWorldGame() {
                     }`}
                   />
                   <div className="flex-1">
-                    <span className="font-semibold capitalize">{press.color}</span>
-                    <span className="text-gray-500 ml-2">by {press.player}</span>
+                    <span className="font-semibold capitalize text-white">{press.color}</span>
+                    <span className="text-gray-400 ml-2">by {press.player}</span>
                   </div>
-                  <span className="text-xs text-gray-400">
+                  <span className="text-xs text-gray-500">
                     {new Date(press.timestamp).toLocaleTimeString()}
                   </span>
                 </div>
@@ -220,20 +220,20 @@ export function HelloWorldGame() {
         <div className="flex justify-between items-center">
           <button
             onClick={() => setButtonPresses([])}
-            className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+            className="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-600"
           >
             Clear History
           </button>
           <button
             onClick={() => { setRole(null); setButtonPresses([]); }}
-            className="text-gray-500 hover:text-gray-700 underline"
+            className="text-gray-400 hover:text-white underline"
           >
             Switch Role
           </button>
         </div>
 
-        <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-          <p className="text-sm text-blue-800">
+        <div className="mt-6 p-4 bg-blue-900/30 rounded-lg">
+          <p className="text-sm text-blue-300">
             <strong>Stats:</strong> {buttonPresses.length} button presses total
             {buttonPresses.length > 0 && (
               <span className="ml-2">
